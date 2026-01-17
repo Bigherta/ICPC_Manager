@@ -66,9 +66,9 @@ include CMakeFiles/run_tests.dir/compiler_depend.make
 # Include the progress variables for this target.
 include CMakeFiles/run_tests.dir/progress.make
 
-CMakeFiles/run_tests: icpc_manager
+CMakeFiles/run_tests: /mnt/f/程序设计与数据结构/程序设计/大作业/ICPC-Management-System-2025/code
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --blue --bold --progress-dir=/mnt/f/程序设计与数据结构/程序设计/大作业/ICPC-Management-System-2025/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Running data/*.in vs *.out diff tests"
-	cd /mnt/f/程序设计与数据结构/程序设计/大作业/ICPC-Management-System-2025 && /usr/bin/cmake -E env bash /mnt/f/程序设计与数据结构/程序设计/大作业/ICPC-Management-System-2025/scripts/run_tests.sh /mnt/f/程序设计与数据结构/程序设计/大作业/ICPC-Management-System-2025/build/icpc_manager /mnt/f/程序设计与数据结构/程序设计/大作业/ICPC-Management-System-2025/data
+	cd /mnt/f/程序设计与数据结构/程序设计/大作业/ICPC-Management-System-2025 && /usr/bin/cmake -E env bash /mnt/f/程序设计与数据结构/程序设计/大作业/ICPC-Management-System-2025/scripts/run_tests.sh /mnt/f/程序设计与数据结构/程序设计/大作业/ICPC-Management-System-2025/code /mnt/f/程序设计与数据结构/程序设计/大作业/ICPC-Management-System-2025/data
 
 run_tests: CMakeFiles/run_tests
 run_tests: CMakeFiles/run_tests.dir/build.make

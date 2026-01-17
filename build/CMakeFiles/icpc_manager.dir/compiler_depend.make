@@ -8,8 +8,10 @@ CMakeFiles/icpc_manager.dir/src/main.cpp.o: /mnt/f/程序设计与数据结构/�
   /usr/include/alloca.h \
   /usr/include/asm-generic/errno-base.h \
   /usr/include/asm-generic/errno.h \
+  /usr/include/c++/13/algorithm \
   /usr/include/c++/13/backward/binders.h \
   /usr/include/c++/13/bit \
+  /usr/include/c++/13/bits/algorithmfwd.h \
   /usr/include/c++/13/bits/alloc_traits.h \
   /usr/include/c++/13/bits/allocator.h \
   /usr/include/c++/13/bits/basic_ios.h \
@@ -55,10 +57,12 @@ CMakeFiles/icpc_manager.dir/src/main.cpp.o: /mnt/f/程序设计与数据结构/�
   /usr/include/c++/13/bits/refwrap.h \
   /usr/include/c++/13/bits/requires_hosted.h \
   /usr/include/c++/13/bits/std_abs.h \
+  /usr/include/c++/13/bits/stl_algo.h \
   /usr/include/c++/13/bits/stl_algobase.h \
   /usr/include/c++/13/bits/stl_bvector.h \
   /usr/include/c++/13/bits/stl_construct.h \
   /usr/include/c++/13/bits/stl_function.h \
+  /usr/include/c++/13/bits/stl_heap.h \
   /usr/include/c++/13/bits/stl_iterator.h \
   /usr/include/c++/13/bits/stl_iterator_base_funcs.h \
   /usr/include/c++/13/bits/stl_iterator_base_types.h \
@@ -66,6 +70,7 @@ CMakeFiles/icpc_manager.dir/src/main.cpp.o: /mnt/f/程序设计与数据结构/�
   /usr/include/c++/13/bits/stl_pair.h \
   /usr/include/c++/13/bits/stl_relops.h \
   /usr/include/c++/13/bits/stl_set.h \
+  /usr/include/c++/13/bits/stl_tempbuf.h \
   /usr/include/c++/13/bits/stl_tree.h \
   /usr/include/c++/13/bits/stl_uninitialized.h \
   /usr/include/c++/13/bits/stl_vector.h \
@@ -73,6 +78,7 @@ CMakeFiles/icpc_manager.dir/src/main.cpp.o: /mnt/f/程序设计与数据结构/�
   /usr/include/c++/13/bits/streambuf_iterator.h \
   /usr/include/c++/13/bits/string_view.tcc \
   /usr/include/c++/13/bits/stringfwd.h \
+  /usr/include/c++/13/bits/uniform_int_dist.h \
   /usr/include/c++/13/bits/unordered_map.h \
   /usr/include/c++/13/bits/uses_allocator.h \
   /usr/include/c++/13/bits/uses_allocator_args.h \
@@ -102,6 +108,8 @@ CMakeFiles/icpc_manager.dir/src/main.cpp.o: /mnt/f/程序设计与数据结构/�
   /usr/include/c++/13/istream \
   /usr/include/c++/13/new \
   /usr/include/c++/13/ostream \
+  /usr/include/c++/13/pstl/execution_defs.h \
+  /usr/include/c++/13/pstl/glue_algorithm_defs.h \
   /usr/include/c++/13/pstl/pstl_config.h \
   /usr/include/c++/13/set \
   /usr/include/c++/13/stdexcept \
@@ -243,8 +251,6 @@ CMakeFiles/icpc_manager.dir/src/main.cpp.o: /mnt/f/程序设计与数据结构/�
 
 /usr/include/x86_64-linux-gnu/bits/types/struct_sched_param.h:
 
-/usr/include/x86_64-linux-gnu/bits/types/struct___jmp_buf_tag.h:
-
 /usr/include/x86_64-linux-gnu/bits/wctype-wchar.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/locale_t.h:
@@ -315,7 +321,19 @@ CMakeFiles/icpc_manager.dir/src/main.cpp.o: /mnt/f/程序设计与数据结构/�
 
 /usr/include/x86_64-linux-gnu/asm/errno.h:
 
-/usr/include/c++/13/bits/stl_construct.h:
+/usr/include/stdlib.h:
+
+/usr/include/stdio.h:
+
+/usr/include/stdc-predef.h:
+
+/usr/include/sched.h:
+
+/usr/include/pthread.h:
+
+/usr/include/x86_64-linux-gnu/bits/pthread_stack_min-dynamic.h:
+
+/usr/include/linux/errno.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/__fpos_t.h:
 
@@ -330,6 +348,10 @@ CMakeFiles/icpc_manager.dir/src/main.cpp.o: /mnt/f/程序设计与数据结构/�
 /usr/include/c++/13/bits/node_handle.h:
 
 /usr/include/c++/13/ios:
+
+/usr/include/time.h:
+
+/usr/include/c++/13/bits/memoryfwd.h:
 
 /usr/include/wchar.h:
 
@@ -363,26 +385,6 @@ CMakeFiles/icpc_manager.dir/src/main.cpp.o: /mnt/f/程序设计与数据结构/�
 
 /usr/include/c++/13/bits/hashtable.h:
 
-/usr/include/x86_64-linux-gnu/bits/types/clock_t.h:
-
-/usr/include/c++/13/bits/char_traits.h:
-
-/usr/include/c++/13/bits/hashtable_policy.h:
-
-/usr/include/x86_64-linux-gnu/bits/uintn-identity.h:
-
-/usr/include/x86_64-linux-gnu/bits/stdlib-float.h:
-
-/usr/include/c++/13/streambuf:
-
-/usr/include/c++/13/bits/exception.h:
-
-/usr/include/x86_64-linux-gnu/c++/13/bits/gthr.h:
-
-/usr/include/c++/13/bits/basic_ios.tcc:
-
-/usr/include/c++/13/bits/nested_exception.h:
-
 /mnt/f/程序设计与数据结构/程序设计/大作业/ICPC-Management-System-2025/include/token.hpp:
 
 /mnt/f/程序设计与数据结构/程序设计/大作业/ICPC-Management-System-2025/src/main.cpp:
@@ -399,6 +401,36 @@ CMakeFiles/icpc_manager.dir/src/main.cpp.o: /mnt/f/程序设计与数据结构/�
 
 /usr/include/c++/13/bits/basic_ios.h:
 
+/usr/include/x86_64-linux-gnu/bits/types/clock_t.h:
+
+/usr/include/c++/13/bits/char_traits.h:
+
+/usr/include/c++/13/bits/hashtable_policy.h:
+
+/usr/include/x86_64-linux-gnu/bits/uintn-identity.h:
+
+/usr/include/x86_64-linux-gnu/bits/stdlib-float.h:
+
+/usr/include/c++/13/streambuf:
+
+/usr/include/c++/13/bits/exception.h:
+
+/usr/include/c++/13/bits/nested_exception.h:
+
+/usr/include/c++/13/bits/hash_bytes.h:
+
+/usr/include/asm-generic/errno-base.h:
+
+/usr/include/c++/13/algorithm:
+
+/usr/include/x86_64-linux-gnu/c++/13/bits/os_defines.h:
+
+/usr/include/x86_64-linux-gnu/c++/13/bits/c++locale.h:
+
+/usr/include/c++/13/bits/ptr_traits.h:
+
+/usr/include/alloca.h:
+
 /usr/include/c++/13/cwctype:
 
 /usr/include/c++/13/bits/predefined_ops.h:
@@ -406,10 +438,6 @@ CMakeFiles/icpc_manager.dir/src/main.cpp.o: /mnt/f/程序设计与数据结构/�
 /usr/include/c++/13/iosfwd:
 
 /usr/include/c++/13/cwchar:
-
-/usr/include/asm-generic/errno-base.h:
-
-/usr/include/c++/13/bits/hash_bytes.h:
 
 /usr/include/c++/13/istream:
 
@@ -423,12 +451,6 @@ CMakeFiles/icpc_manager.dir/src/main.cpp.o: /mnt/f/程序设计与数据结构/�
 
 /usr/include/c++/13/backward/binders.h:
 
-/usr/include/c++/13/bits/stringfwd.h:
-
-/usr/include/alloca.h:
-
-/usr/include/c++/13/bits/move.h:
-
 /usr/include/c++/13/bits/basic_string.tcc:
 
 /usr/include/c++/13/bit:
@@ -439,25 +461,9 @@ CMakeFiles/icpc_manager.dir/src/main.cpp.o: /mnt/f/程序设计与数据结构/�
 
 /usr/include/c++/13/bits/enable_special_members.h:
 
-/usr/include/x86_64-linux-gnu/bits/libc-header-start.h:
-
-/usr/include/c++/13/bits/functexcept.h:
-
-/usr/include/c++/13/bits/stl_iterator.h:
-
-/usr/include/c++/13/string:
-
 /usr/include/x86_64-linux-gnu/bits/endianness.h:
 
 /usr/include/c++/13/bits/basic_string.h:
-
-/usr/include/stdc-predef.h:
-
-/usr/include/x86_64-linux-gnu/c++/13/bits/os_defines.h:
-
-/usr/include/x86_64-linux-gnu/c++/13/bits/c++locale.h:
-
-/usr/include/c++/13/bits/ptr_traits.h:
 
 /usr/include/c++/13/bits/localefwd.h:
 
@@ -465,9 +471,7 @@ CMakeFiles/icpc_manager.dir/src/main.cpp.o: /mnt/f/程序设计与数据结构/�
 
 /usr/include/c++/13/bits/locale_facets.h:
 
-/usr/include/c++/13/bits/memoryfwd.h:
-
-/usr/include/time.h:
+/usr/include/c++/13/bits/move.h:
 
 /usr/include/x86_64-linux-gnu/bits/types.h:
 
@@ -481,13 +485,33 @@ CMakeFiles/icpc_manager.dir/src/main.cpp.o: /mnt/f/程序设计与数据结构/�
 
 /usr/include/x86_64-linux-gnu/bits/types/struct_timespec.h:
 
+/usr/include/c++/13/bits/stl_algo.h:
+
 /usr/include/c++/13/cstddef:
 
 /usr/include/c++/13/vector:
 
+/usr/include/c++/13/bits/algorithmfwd.h:
+
 /usr/include/c++/13/bits/concept_check.h:
 
 /usr/include/c++/13/bits/alloc_traits.h:
+
+/usr/include/c++/13/bits/stl_construct.h:
+
+/usr/include/c++/13/bits/stl_heap.h:
+
+/usr/include/c++/13/ext/alloc_traits.h:
+
+/usr/include/c++/13/new:
+
+/usr/include/x86_64-linux-gnu/bits/libc-header-start.h:
+
+/usr/include/c++/13/bits/functexcept.h:
+
+/usr/include/c++/13/bits/stl_iterator.h:
+
+/usr/include/c++/13/string:
 
 /usr/include/asm-generic/errno.h:
 
@@ -501,13 +525,21 @@ CMakeFiles/icpc_manager.dir/src/main.cpp.o: /mnt/f/程序设计与数据结构/�
 
 /usr/include/c++/13/bits/stl_set.h:
 
+/usr/include/x86_64-linux-gnu/bits/types/struct___jmp_buf_tag.h:
+
+/usr/include/c++/13/bits/stl_tempbuf.h:
+
+/usr/include/c++/13/bits/stl_vector.h:
+
 /usr/include/c++/13/bits/stl_tree.h:
 
 /usr/include/c++/13/bits/stl_uninitialized.h:
 
 /usr/include/c++/13/bits/unordered_map.h:
 
-/usr/include/c++/13/bits/stl_vector.h:
+/usr/include/c++/13/bits/stringfwd.h:
+
+/usr/include/c++/13/bits/uniform_int_dist.h:
 
 /usr/include/c++/13/bits/std_abs.h:
 
@@ -539,8 +571,6 @@ CMakeFiles/icpc_manager.dir/src/main.cpp.o: /mnt/f/程序设计与数据结构/�
 
 /usr/include/c++/13/cerrno:
 
-/usr/include/stdio.h:
-
 /usr/include/c++/13/clocale:
 
 /usr/include/x86_64-linux-gnu/bits/types/struct_FILE.h:
@@ -563,6 +593,12 @@ CMakeFiles/icpc_manager.dir/src/main.cpp.o: /mnt/f/程序设计与数据结构/�
 
 /usr/include/errno.h:
 
+/usr/include/x86_64-linux-gnu/bits/pthreadtypes-arch.h:
+
+/usr/include/locale.h:
+
+/usr/include/c++/13/ext/aligned_buffer.h:
+
 /usr/include/c++/13/cctype:
 
 /usr/include/c++/13/ext/atomicity.h:
@@ -579,13 +615,17 @@ CMakeFiles/icpc_manager.dir/src/main.cpp.o: /mnt/f/程序设计与数据结构/�
 
 /usr/include/c++/13/initializer_list:
 
-/usr/include/c++/13/ext/alloc_traits.h:
-
-/usr/include/c++/13/new:
-
 /usr/include/c++/13/bits/streambuf_iterator.h:
 
 /usr/include/c++/13/ostream:
+
+/usr/include/x86_64-linux-gnu/c++/13/bits/gthr.h:
+
+/usr/include/c++/13/bits/basic_ios.tcc:
+
+/usr/include/c++/13/pstl/execution_defs.h:
+
+/usr/include/c++/13/pstl/glue_algorithm_defs.h:
 
 /usr/include/x86_64-linux-gnu/bits/wordsize.h:
 
@@ -610,19 +650,3 @@ CMakeFiles/icpc_manager.dir/src/main.cpp.o: /mnt/f/程序设计与数据结构/�
 /usr/include/c++/13/bits/streambuf.tcc:
 
 /usr/include/endian.h:
-
-/usr/include/x86_64-linux-gnu/bits/pthread_stack_min-dynamic.h:
-
-/usr/include/linux/errno.h:
-
-/usr/include/x86_64-linux-gnu/bits/pthreadtypes-arch.h:
-
-/usr/include/c++/13/ext/aligned_buffer.h:
-
-/usr/include/locale.h:
-
-/usr/include/pthread.h:
-
-/usr/include/sched.h:
-
-/usr/include/stdlib.h:

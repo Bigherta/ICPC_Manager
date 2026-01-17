@@ -101,7 +101,6 @@ public:
         {
             return a.time_punishment < b.time_punishment;
         }
-        // 并列时：按“最大通过时间→次大…”比较，更小者排名靠前
         for (auto it_a = a.problem_solved.rbegin(), it_b = b.problem_solved.rbegin();
              it_a != a.problem_solved.rend() && it_b != b.problem_solved.rend(); ++it_a, ++it_b)
         {

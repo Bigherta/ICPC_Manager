@@ -1,10 +1,12 @@
 #pragma once
 #ifndef PARSER_HPP
 #define PARSER_HPP
+#include <algorithm>
 #include <iostream>
 #include <set>
 #include <string>
 #include <unordered_map>
+#include <vector>
 #include "team.hpp"
 #include "token.hpp"
 
@@ -134,18 +136,27 @@ public:
 
     void flush()
     {
-        // 重建 rankingSet 为指针集合，避免复制大量 team 对象
-        rankingSet.clear();
+        // 更快的重建：先把指针收集到 vector 并排序，然后带 hint 顺序插入到 set 中以减少平衡开销
+        std::vector<team *> vec;
+        vec.reserve(teamMap.size());
         for (auto &pair: teamMap)
         {
-            rankingSet.insert(&pair.second);
+            vec.push_back(&pair.second);
+        }
+
+        std::sort(vec.begin(), vec.end(), [](const team *a, const team *b) { return *a < *b; });
+
+        rankingSet.clear();
+        auto hint = rankingSet.end();
+        for (auto ptr: vec)
+        {
+            hint = rankingSet.insert(hint, ptr);
         }
 
         int rank = 1;
-        for (auto iter = rankingSet.begin(); iter != rankingSet.end(); ++iter)
+        for (auto ptr: vec)
         {
-            std::string teamName = (*iter)->get_name();
-            teamMap[teamName].get_rank() = rank++;
+            ptr->get_rank() = rank++;
         }
     }
 

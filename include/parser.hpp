@@ -4,7 +4,9 @@
 #include <algorithm>
 #include <iostream>
 #include <set>
+#include <sstream>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 #include "team.hpp"
@@ -95,39 +97,51 @@ public:
         std::vector<token> tokens;
         size_t pos = 0;
 
+        auto tokenTypeFromView = [](std::string_view w) -> TokenType {
+            if (w == "ADDTEAM")
+                return TokenType::ADDTEAM;
+            if (w == "START")
+                return TokenType::START;
+            if (w == "SUBMIT")
+                return TokenType::SUBMIT;
+            if (w == "FLUSH")
+                return TokenType::FLUSH;
+            if (w == "FREEZE")
+                return TokenType::FREEZE;
+            if (w == "SCROLL")
+                return TokenType::SCROLL;
+            if (w == "QUERY_RANKING")
+                return TokenType::QUERY_RANKING;
+            if (w == "QUERY_SUBMISSION")
+                return TokenType::QUERY_SUBMISSION;
+            if (w == "END")
+                return TokenType::END;
+            if (w == "Accepted")
+                return TokenType::ACCEPTED;
+            if (w == "Wrong_Answer")
+                return TokenType::WRONG_ANSWER;
+            if (w == "Runtime_Error")
+                return TokenType::RUNTIME_ERROR;
+            if (w == "Time_Limit_Exceed")
+                return TokenType::TIME_LIMIT_EXCEED;
+            return TokenType::UNKNOWN;
+        };
+
         while (pos < input.length())
         {
-            // 跳过前导空白字符
-            while (pos < input.length() && isspace(input[pos]))
-            {
+            while (pos < input.length() && isspace(static_cast<unsigned char>(input[pos])))
                 pos++;
-            }
             if (pos >= input.length())
                 break;
 
-            // 找到一个完整的单词
             size_t start = pos;
-            while (pos < input.length() && !isspace(input[pos]))
-            {
+            while (pos < input.length() && !isspace(static_cast<unsigned char>(input[pos])))
                 pos++;
-            }
 
-            std::string word = input.substr(start, pos - start);
-
+            std::string_view sv(input.data() + start, pos - start);
             token tok;
-
-            // 判断是否是关键字
-            auto it = keywordMap.find(word);
-            if (it != keywordMap.end())
-            {
-                tok.type = it->second;
-            }
-            else
-            {
-                tok.type = TokenType::UNKNOWN;
-            }
-
-            tok.value = word;
+            tok.type = tokenTypeFromView(sv);
+            tok.value = sv;
             tokens.push_back(tok);
         }
 
@@ -168,8 +182,8 @@ public:
         // 取排名最靠后且还有冻结题的队伍（freezeOrder 存储 team*）
         auto rev_it = freezeOrder.rbegin();
         team *oldPtr = *rev_it; // 指向被处理队伍的指针
-        std::string teamName = oldPtr->get_name();
-        team &team_ref = teamMap[teamName];
+        team &team_ref = *oldPtr; // 使用引用避免按 name 再次在 map 中查找
+        const std::string &teamName = team_ref.get_name();
         auto &statuses = team_ref.get_submit_status();
 
         // 仅解冻该队编号最小的一道冻结题
@@ -269,7 +283,7 @@ public:
                 token *nameToken = ts.get();
                 if (nameToken)
                 {
-                    std::string teamName = nameToken->value;
+                    std::string teamName(nameToken->value);
 
                     // 检查重名
                     if (teamMap.find(teamName) == teamMap.end())
@@ -302,21 +316,22 @@ public:
 
                 ts.get(); // 跳过 "DURATION"
                 token *duration = ts.get(); // 比赛时长
-                duration_time = std::stoi(duration->value);
+                duration_time = std::stoi(std::string(duration->value));
 
                 ts.get(); // 跳过 "PROBLEM"
                 token *count = ts.get(); // 题目数量
-                problem_count = std::stoi(count->value);
+                problem_count = std::stoi(std::string(count->value));
 
                 // 初始化排名和每道题的提交状态
                 int rank = 1;
                 for (auto iter = rankingSet.begin(); iter != rankingSet.end(); ++iter)
                 {
-                    std::string teamName = (*iter)->get_name();
-                    teamMap[teamName].get_rank() = rank++;
+                    team *ptr = *iter;
+                    team &t = *ptr;
+                    t.get_rank() = rank++;
 
                     // 初始化每支队伍的每道题提交记录为默认 ProblemStatus
-                    teamMap[teamName].get_submit_status().resize(problem_count);
+                    t.get_submit_status().resize(problem_count);
                 }
                 break;
             }
@@ -334,18 +349,20 @@ public:
                 ts.get(); // AT
                 token *timeToken = ts.get();
 
-                std::string problemName = problemnameToken->value;
-                std::string teamName = teamnameToken->value;
-                int submitTime = std::stoi(timeToken->value);
+                std::string problemName(problemnameToken->value);
+                std::string teamName(teamnameToken->value);
+                int submitTime = std::stoi(std::string(timeToken->value));
 
                 int problemIdx = problemName[0] - 'A';
-                auto &submitStatus = teamMap[teamName].get_submit_status()[problemIdx];
+                auto it_team = teamMap.find(teamName);
+                team &team_ref = it_team->second;
+                auto &submitStatus = team_ref.get_submit_status()[problemIdx];
 
                 // 统一计数提交次数
                 submitStatus.submit_count += 1;
 
                 // 记录 team 级别的最近一次提交（用于时间平局时的判定）
-                teamMap[teamName].set_last_submit(problemIdx, statusToken->type, submitTime);
+                team_ref.set_last_submit(problemIdx, statusToken->type, submitTime);
 
                 // 记录该题最近一次提交状态与时间（用于 ALL 状态 + 指定题目的查询）
                 submitStatus.last_submit_time = submitTime;
@@ -356,8 +373,8 @@ public:
 
                 if (is_ac)
                 {
-                    teamMap[teamName].get_submit_status()[problemIdx].last_accept = submitTime;
-                    teamMap[teamName].set_last_accept(problemIdx, submitTime);
+                    team_ref.get_submit_status()[problemIdx].last_accept = submitTime;
+                    team_ref.set_last_accept(problemIdx, submitTime);
                     if (!already_solved)
                     {
                         if (submitStatus.first_ac_time == -1)
@@ -367,15 +384,15 @@ public:
                         {
                             // 封榜期间：仅标记冻结，不更新通过与罚时
                             submitStatus.state = 2;
-                            teamMap[teamName].get_has_frozen() = true;
+                            team_ref.get_has_frozen() = true;
                         }
                         else
                         {
                             // 非封榜：立即生效
                             submitStatus.state = 1;
-                            teamMap[teamName].get_time_punishment() += submitTime + submitStatus.error_count * 20;
-                            teamMap[teamName].add_solved_time(submitStatus.first_ac_time);
-                            teamMap[teamName].get_solved_count()++;
+                            team_ref.get_time_punishment() += submitTime + submitStatus.error_count * 20;
+                            team_ref.add_solved_time(submitStatus.first_ac_time);
+                            team_ref.get_solved_count()++;
                         }
                     }
                 }
@@ -397,17 +414,17 @@ public:
                     if (statusToken->type == TokenType::WRONG_ANSWER)
                     {
                         submitStatus.last_wrong = submitTime;
-                        teamMap[teamName].set_last_wrong(problemIdx, submitTime);
+                        team_ref.set_last_wrong(problemIdx, submitTime);
                     }
                     else if (statusToken->type == TokenType::TIME_LIMIT_EXCEED)
                     {
                         submitStatus.last_tle = submitTime;
-                        teamMap[teamName].set_last_tle(problemIdx, submitTime);
+                        team_ref.set_last_tle(problemIdx, submitTime);
                     }
                     else if (statusToken->type == TokenType::RUNTIME_ERROR)
                     {
                         submitStatus.last_re = submitTime;
-                        teamMap[teamName].set_last_re(problemIdx, submitTime);
+                        team_ref.set_last_re(problemIdx, submitTime);
                     }
                 }
                 break;
@@ -452,17 +469,21 @@ public:
                 is_frozen = false;
                 std::cout << "[Info]Scroll scoreboard.\n";
                 flush();
-                for (auto iterator = rankingSet.begin(); iterator != rankingSet.end(); ++iterator)
                 {
-                    std::string teamName = (*iterator)->get_name();
-                    team &team_ = teamMap[teamName];
-                    std::cout << teamName << " " << team_.get_rank() << " " << team_.get_problem_solved().size() << " "
-                              << team_.get_time_punishment() << " ";
-                    for (const auto &status: team_.get_submit_status())
+                    std::ostringstream outbuf;
+                    for (auto iterator = rankingSet.begin(); iterator != rankingSet.end(); ++iterator)
                     {
-                        std::cout << status << " ";
+                        team *ptr = *iterator;
+                        team &team_ = *ptr;
+                        outbuf << team_.get_name() << " " << team_.get_rank() << " "
+                               << team_.get_problem_solved().size() << " " << team_.get_time_punishment() << " ";
+                        for (const auto &status: team_.get_submit_status())
+                        {
+                            outbuf << status << " ";
+                        }
+                        outbuf << "\n";
                     }
-                    std::cout << "\n";
+                    std::cout << outbuf.str();
                 }
                 std::set<team *, TeamPtrLess> freezeOrder; // 未解冻的队伍排序（指针集合，使用 TeamPtrLess）
                 for (auto &pair: teamMap)
@@ -479,33 +500,39 @@ public:
                 }
                 // 滚榜结束后刷新，输出最终正确排名
                 flush();
-                for (auto iterator = rankingSet.begin(); iterator != rankingSet.end(); ++iterator)
                 {
-                    std::string teamName = (*iterator)->get_name();
-                    team &team_ = teamMap[teamName];
-                    std::cout << teamName << " " << team_.get_rank() << " " << team_.get_problem_solved().size() << " "
-                              << team_.get_time_punishment() << " ";
-                    for (const auto &status: team_.get_submit_status())
+                    std::ostringstream outbuf;
+                    for (auto iterator = rankingSet.begin(); iterator != rankingSet.end(); ++iterator)
                     {
-                        std::cout << status << " ";
+                        team *ptr = *iterator;
+                        team &team_ = *ptr;
+                        outbuf << team_.get_name() << " " << team_.get_rank() << " "
+                               << team_.get_problem_solved().size() << " " << team_.get_time_punishment() << " ";
+                        for (const auto &status: team_.get_submit_status())
+                        {
+                            outbuf << status << " ";
+                        }
+                        outbuf << "\n";
                     }
-                    std::cout << "\n";
+                    std::cout << outbuf.str();
                 }
                 break;
             }
 
             case TokenType::QUERY_RANKING: {
                 token *nameToken = ts.get();
-                std::string teamName = nameToken->value;
-                if (teamMap.find(teamName) != teamMap.end())
+                std::string teamName(nameToken->value);
+                auto it_rank = teamMap.find(teamName);
+                if (it_rank != teamMap.end())
                 {
-                    std::cout << "[Info]Complete query ranking.\n";
+                    std::cout << "[Info]Complete query ranking." << "\n";
                     if (is_frozen)
                     {
                         std::cout << "[Warning]Scoreboard is frozen. The ranking may be inaccurate until it were "
-                                     "scrolled.\n";
+                                     "scrolled."
+                                  << "\n";
                     }
-                    std::cout << teamName << " NOW AT RANKING " << teamMap[teamName].get_rank() << "\n";
+                    std::cout << teamName << " NOW AT RANKING " << it_rank->second.get_rank() << "\n";
                 }
                 else
                 {
@@ -518,14 +545,14 @@ public:
                 token *nameToken = ts.get();
                 ts.get(); // WHERE
                 token *problemToken = ts.get();
-                std::string problemName = problemToken->value.substr(8, problemToken->value.length() - 8);
+                std::string problemName(problemToken->value.substr(8, problemToken->value.length() - 8));
                 ts.get(); // AND
                 token *statusToken = ts.get();
-                std::string statusName = statusToken->value.substr(7, statusToken->value.length() - 7);
-                if (teamMap.find(nameToken->value) != teamMap.end())
+                std::string statusName(statusToken->value.substr(7, statusToken->value.length() - 7));
+                std::string teamName(nameToken->value);
+                if (teamMap.find(teamName) != teamMap.end())
                 {
                     std::cout << "[Info]Complete query submission.\n";
-                    std::string teamName = nameToken->value;
                     auto &team_ = teamMap[teamName];
                     bool is_search_all_problems = (problemName == "ALL");
                     bool is_search_all_status = (statusName == "ALL");

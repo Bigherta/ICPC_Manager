@@ -1,7 +1,7 @@
 #ifndef TOKEN_HPP
 #define TOKEN_HPP
 
-#include <string>
+#include <string_view>
 #include <vector>
 enum class TokenType
 {
@@ -26,7 +26,7 @@ class token
 {
 public:
     TokenType type = TokenType::UNKNOWN;
-    std::string value;
+    std::string_view value;
 };
 
 class tokenstream

@@ -1,4 +1,0 @@
-/mnt/f/程序设计与数据结构/程序设计/大作业/ICPC-Management-System-2025/build/CMakeFiles/icpc_manager.dir
-/mnt/f/程序设计与数据结构/程序设计/大作业/ICPC-Management-System-2025/build/CMakeFiles/run_tests.dir
-/mnt/f/程序设计与数据结构/程序设计/大作业/ICPC-Management-System-2025/build/CMakeFiles/edit_cache.dir
-/mnt/f/程序设计与数据结构/程序设计/大作业/ICPC-Management-System-2025/build/CMakeFiles/rebuild_cache.dir

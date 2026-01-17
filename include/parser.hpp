@@ -199,25 +199,16 @@ public:
                 }
             }
             team_.get_has_frozen() = any_frozen_left;
-
+            team replaced_team = *rankingSet.lower_bound(team_);
+            std::string replaced_name = replaced_team.get_name();
+            if (replaced_name != teamName) // 仅在排名发生变化时输出
+            {
+                std::cout << teamName << " " << replaced_name << " " << team_.get_problem_solved().size() << " "
+                          << team_.get_time_punishment() << '\n';
+            }
             // 更新排名集合并判断是否发生排名变化
             rankingSet.erase(*iterator);
             rankingSet.insert(team_);
-
-            int rank = 1;
-            for (auto new_iterator = rankingSet.begin(); new_iterator != rankingSet.end(); ++new_iterator, ++rank)
-            {
-                if (new_iterator->get_name() == teamName)
-                {
-                    std::string replaced_name = oldranking[rank - 1].get_name();
-                    if (replaced_name != teamName) // 仅在排名发生变化时输出
-                    {
-                        std::cout << teamName << " " << replaced_name << " " << team_.get_problem_solved().size() << " "
-                                  << team_.get_time_punishment() << '\n';
-                    }
-                    break;
-                }
-            }
             return true; // 一次只解冻一道题
         }
         return false;

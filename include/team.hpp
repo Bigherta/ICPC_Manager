@@ -1,8 +1,11 @@
-#include <algorithm>
+#pragma once
+#ifndef TEAM_HPP
+#define TEAM_HPP
 #include <ostream>
 #include <string>
 #include <utility>
 #include <vector>
+#include <algorithm>
 #include "token.hpp"
 class team
 {
@@ -43,6 +46,10 @@ private:
             }
             return os;
         }
+        friend bool operator<(const ProblemStatus &a, const ProblemStatus &b)
+        {
+            return a.first_ac_time < b.first_ac_time;
+        }
     };
     std::pair<std::pair<int, TokenType>, int> last_submit = {
             {-1, TokenType::UNKNOWN}, -1}; // first.first: 题目序号，first.second: 提交类型，second最后一次提交时间
@@ -51,7 +58,7 @@ private:
     std::pair<int, int> last_re = {-1, -1}; // first: 题目序号， second最后一次运行时错误时间
     std::pair<int, int> last_tle = {-1, -1}; // first: 题目序号， second最后一次超时错误时间
     std::vector<ProblemStatus> problem_submit_status;
-    std::vector<int> problem_solved; // 已通过的题目及第一次提交所用的时间
+    std::vector<int> problem_solved; // 已通过的题目首次通过时间（有序）
 public:
     team() : name(""), rank(0), time_punishment(0){};
     team(const std::string &team_name) : name(team_name), rank(0), time_punishment(0){};
@@ -61,6 +68,11 @@ public:
     std::vector<ProblemStatus> &get_submit_status() { return problem_submit_status; }
     std::vector<int> &get_problem_solved() { return problem_solved; }
     const std::vector<int> &get_problem_solved() const { return problem_solved; }
+    void add_solved_time(int t)
+    {
+        auto it = std::lower_bound(problem_solved.begin(), problem_solved.end(), t);
+        problem_solved.insert(it, t);
+    }
     int &get_time_punishment() { return time_punishment; }
     int get_time_punishment() const { return time_punishment; }
     bool &get_has_frozen() { return has_frozen; }
@@ -87,25 +99,16 @@ public:
             return a.time_punishment < b.time_punishment;
         }
         // 并列时：按“最大通过时间→次大…”比较，更小者排名靠前
+        for (auto it_a = a.problem_solved.rbegin(), it_b = b.problem_solved.rbegin();
+             it_a != a.problem_solved.rend() && it_b != b.problem_solved.rend(); ++it_a, ++it_b)
         {
-            std::vector<int> times_a;
-            std::vector<int> times_b;
-            times_a.reserve(a.problem_solved.size());
-            times_b.reserve(b.problem_solved.size());
-            for (const auto &p: a.problem_solved)
-                times_a.push_back(p);
-            for (const auto &p: b.problem_solved)
-                times_b.push_back(p);
-            std::sort(times_a.begin(), times_a.end());
-            std::sort(times_b.begin(), times_b.end());
-            for (int i = static_cast<int>(times_a.size()) - 1; i >= 0; --i)
+            if (*it_a != *it_b)
             {
-                if (times_a[i] != times_b[i])
-                {
-                    return times_a[i] < times_b[i];
-                }
+                return *it_a < *it_b;
             }
         }
         return a.name < b.name;
     }
 };
+
+#endif // TEAM_HPP

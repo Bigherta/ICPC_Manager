@@ -1,10 +1,13 @@
+#pragma once
+#ifndef PARSER_HPP
+#define PARSER_HPP
 #include <iostream>
 #include <set>
 #include <string>
-#include <unordered_map>
-
+#include <map>
 #include "team.hpp"
 #include "token.hpp"
+#include <unordered_map>
 
 /**
  * 关键字 → TokenType 的映射表
@@ -54,7 +57,7 @@ private:
     /**
      * teamName → team 对象
      */
-    std::unordered_map<std::string, team> teamMap;
+    std::map<std::string, team> teamMap;
 
     /**
      * 排名集合
@@ -179,7 +182,7 @@ public:
         {
             status.state = 1;
             team_.get_time_punishment() += status.first_ac_time + status.error_count * 20;
-            team_.get_problem_solved().push_back(status.first_ac_time);
+            team_.add_solved_time(status.first_ac_time);
         }
 
         // 更新队伍是否仍有冻结题
@@ -195,26 +198,26 @@ public:
         team_.get_has_frozen() = any_frozen_left;
 
         // 在 rankingSet 中先移除旧键，再根据新键查找将被取代的队伍
-            // 先根据当前 rankingSet（仍含旧键）计算将被取代的队伍，以匹配原实现语义
-            auto it = rankingSet.lower_bound(team_); // O(log N)
-            if (it != rankingSet.end())
+        // 先根据当前 rankingSet（仍含旧键）计算将被取代的队伍，以匹配原实现语义
+        auto it = rankingSet.lower_bound(team_); // O(log N)
+        if (it != rankingSet.end())
+        {
+            team displaced = *it;
+            if (displaced.get_name() != teamName) // 仅在排名发生变化时输出
             {
-                team displaced = *it;
-                if (displaced.get_name() != teamName) // 仅在排名发生变化时输出
-                {
-                    std::cout << teamName << " " << displaced.get_name() << " " << team_.get_problem_solved().size()
-                              << " " << team_.get_time_punishment() << '\n';
-                }
+                std::cout << teamName << " " << displaced.get_name() << " " << team_.get_problem_solved().size() << " "
+                          << team_.get_time_punishment() << '\n';
             }
+        }
 
-            // 删除旧键并插入更新后的键
-            rankingSet.erase(oldKey);      // O(log N)
-            freezeOrder.erase(oldKey);     // 从未解冻集合中删除旧键
-            rankingSet.insert(team_);      // O(log N)
+        // 删除旧键并插入更新后的键
+        rankingSet.erase(oldKey); // O(log N)
+        freezeOrder.erase(oldKey); // 从未解冻集合中删除旧键
+        rankingSet.insert(team_); // O(log N)
 
-            // 若仍有冻结题则把更新后的键加入 freezeOrder
-            if (team_.get_has_frozen())
-                freezeOrder.insert(team_); // O(log N)
+        // 若仍有冻结题则把更新后的键加入 freezeOrder
+        if (team_.get_has_frozen())
+            freezeOrder.insert(team_); // O(log N)
     }
     /**
      * execute
@@ -352,7 +355,7 @@ public:
                             // 非封榜：立即生效
                             submitStatus.state = 1;
                             teamMap[teamName].get_time_punishment() += submitTime + submitStatus.error_count * 20;
-                            teamMap[teamName].get_problem_solved().push_back(submitStatus.first_ac_time);
+                            teamMap[teamName].add_solved_time(submitStatus.first_ac_time);
                         }
                     }
                 }
@@ -623,3 +626,4 @@ public:
         }
     }
 };
+#endif // PARSER_HPP

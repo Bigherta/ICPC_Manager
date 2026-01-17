@@ -59,7 +59,7 @@ private:
     std::unordered_map<std::string, team> teamMap;
 
     /**
-     * 排名集合（优化）
+     * 排名集合
      * 存储指向 `team` 的指针以避免频繁拷贝和构造/析构开销
      */
     struct TeamPtrLess
@@ -82,10 +82,7 @@ private:
     int duration_time;
 
 public:
-    parser()
-    {
-        teamMap.reserve(10000);
-    }
+    parser() { teamMap.reserve(10000); }
     /**
      * tokenize
      * 对输入的一整行命令进行分词
@@ -194,6 +191,7 @@ public:
             status.state = 1;
             newKey.get_time_punishment() += status.first_ac_time + status.error_count * 20;
             newKey.add_solved_time(status.first_ac_time);
+            newKey.get_solved_count()++;
         }
 
         bool any_frozen_left = false;
@@ -366,6 +364,7 @@ public:
                             submitStatus.state = 1;
                             teamMap[teamName].get_time_punishment() += submitTime + submitStatus.error_count * 20;
                             teamMap[teamName].add_solved_time(submitStatus.first_ac_time);
+                            teamMap[teamName].get_solved_count()++;
                         }
                     }
                 }

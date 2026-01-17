@@ -12,6 +12,7 @@ class team
 private:
     std::string name; // 队伍名称
     int rank; // 当前排名
+    int solved_count; // 通过题目数
     int time_punishment; // 总罚时
     bool has_frozen = false; // 是否被冻结
     struct ProblemStatus
@@ -60,11 +61,13 @@ private:
     std::vector<ProblemStatus> problem_submit_status;
     std::vector<int> problem_solved; // 已通过的题目首次通过时间（有序）
 public:
-    team() : name(""), rank(0), time_punishment(0){};
-    team(const std::string &team_name) : name(team_name), rank(0), time_punishment(0){};
+    team() : name(""), rank(0), solved_count(0), time_punishment(0){};
+    team(const std::string &team_name) : name(team_name), rank(0), solved_count(0), time_punishment(0){};
     std::string get_name() const { return name; }
     int &get_rank() { return rank; }
     int get_rank() const { return rank; }
+    int &get_solved_count() { return solved_count; }
+    int get_solved_count() const { return solved_count; }
     std::vector<ProblemStatus> &get_submit_status() { return problem_submit_status; }
     std::vector<int> &get_problem_solved() { return problem_solved; }
     const std::vector<int> &get_problem_solved() const { return problem_solved; }
@@ -79,10 +82,10 @@ public:
     bool get_has_frozen() const { return has_frozen; }
     // last_* accessors
     std::pair<std::pair<int, TokenType>, int> &get_last_submit() { return last_submit; }
-    std::pair<int, int> &get_last_accept()  { return last_accept; }
-    std::pair<int, int> &get_last_wrong()  { return last_wrong; }
-    std::pair<int, int> &get_last_re()  { return last_re; }
-    std::pair<int, int> &get_last_tle()  { return last_tle; }
+    std::pair<int, int> &get_last_accept() { return last_accept; }
+    std::pair<int, int> &get_last_wrong() { return last_wrong; }
+    std::pair<int, int> &get_last_re() { return last_re; }
+    std::pair<int, int> &get_last_tle() { return last_tle; }
     void set_last_submit(int probIdx, TokenType status, int time) { last_submit = {{probIdx, status}, time}; }
     void set_last_accept(int probIdx, int time) { last_accept = {probIdx, time}; }
     void set_last_wrong(int probIdx, int time) { last_wrong = {probIdx, time}; }
@@ -90,9 +93,9 @@ public:
     void set_last_tle(int probIdx, int time) { last_tle = {probIdx, time}; }
     friend bool operator<(const team &a, const team &b)
     {
-        if (a.problem_solved.size() != b.problem_solved.size())
+        if (a.solved_count != b.solved_count)
         {
-            return a.problem_solved.size() > b.problem_solved.size();
+            return a.solved_count > b.solved_count;
         }
         if (a.time_punishment != b.time_punishment)
         {

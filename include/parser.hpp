@@ -141,77 +141,80 @@ public:
         }
     }
 
-    bool unfreeze_process()
+    void unfreeze_process(std::set<team> &freezeOrder)
     {
-        std::vector<team> oldranking;
-        oldranking.reserve(rankingSet.size());
-        for (auto iterator = rankingSet.begin(); iterator != rankingSet.end(); ++iterator)
+        if (freezeOrder.empty())
+            return;
+
+        // 取排名最靠后且还有冻结题的队伍（freezeOrder 维护与 rankingSet 相同的比较器）
+        auto rev_it = freezeOrder.rbegin();
+        team oldKey = *rev_it; // 旧的键（副本）
+        std::string teamName = oldKey.get_name();
+        team &team_ = teamMap[teamName];
+        auto &statuses = team_.get_submit_status();
+
+        // 仅解冻该队编号最小的一道冻结题
+        int idx = -1;
+        for (int i = 0; i < static_cast<int>(statuses.size()); ++i)
         {
-            oldranking.push_back(*iterator);
+            if (statuses[i].state == 2)
+            {
+                idx = i;
+                break;
+            }
         }
 
-        for (auto iterator = rankingSet.rbegin(); iterator != rankingSet.rend(); ++iterator)
+        // 若没有冻结题则从 freezeOrder 中移除旧键
+        if (idx == -1)
         {
-            if (!iterator->get_has_frozen())
-                continue;
-
-            std::string teamName = iterator->get_name();
-            team &team_ = teamMap[teamName];
-            auto &statuses = team_.get_submit_status();
-
-            // 仅解冻该队编号最小的一道冻结题
-            int idx = -1;
-            for (int i = 0; i < statuses.size(); ++i)
-            {
-                if (statuses[i].state == 2)
-                {
-                    idx = i;
-                    break;
-                }
-            }
-            if (idx == -1)
-            {
-                team_.get_has_frozen() = false;
-                continue;
-            }
-
-            auto &status = statuses[idx];
-            // 解除冻结，按是否通过决定是否增加罚时与通过集合
-            // 先恢复为未冻结状态
-            status.state = 0;
-            // 若封榜期间通过
-            if (status.first_ac_time != -1)
-            {
-                status.state = 1;
-                team_.get_time_punishment() += status.first_ac_time + status.error_count * 20;
-                char probChar = static_cast<char>('A' + idx);
-                team_.get_problem_solved().push_back(status.first_ac_time);
-            }
-
-            // 更新队伍是否仍有冻结题
-            bool any_frozen_left = false;
-            for (const auto &s: statuses)
-            {
-                if (s.state == 2)
-                {
-                    any_frozen_left = true;
-                    break;
-                }
-            }
-            team_.get_has_frozen() = any_frozen_left;
-            team replaced_team = *rankingSet.lower_bound(team_);
-            std::string replaced_name = replaced_team.get_name();
-            if (replaced_name != teamName) // 仅在排名发生变化时输出
-            {
-                std::cout << teamName << " " << replaced_name << " " << team_.get_problem_solved().size() << " "
-                          << team_.get_time_punishment() << '\n';
-            }
-            // 更新排名集合并判断是否发生排名变化
-            rankingSet.erase(*iterator);
-            rankingSet.insert(team_);
-            return true; // 一次只解冻一道题
+            team_.get_has_frozen() = false;
+            freezeOrder.erase(oldKey);
+            return;
         }
-        return false;
+
+        auto &status = statuses[idx];
+        // 解除冻结，按是否通过决定是否增加罚时与通过集合
+        status.state = 0;
+        if (status.first_ac_time != -1)
+        {
+            status.state = 1;
+            team_.get_time_punishment() += status.first_ac_time + status.error_count * 20;
+            team_.get_problem_solved().push_back(status.first_ac_time);
+        }
+
+        // 更新队伍是否仍有冻结题
+        bool any_frozen_left = false;
+        for (const auto &s: statuses)
+        {
+            if (s.state == 2)
+            {
+                any_frozen_left = true;
+                break;
+            }
+        }
+        team_.get_has_frozen() = any_frozen_left;
+
+        // 在 rankingSet 中先移除旧键，再根据新键查找将被取代的队伍
+            // 先根据当前 rankingSet（仍含旧键）计算将被取代的队伍，以匹配原实现语义
+            auto it = rankingSet.lower_bound(team_); // O(log N)
+            if (it != rankingSet.end())
+            {
+                team displaced = *it;
+                if (displaced.get_name() != teamName) // 仅在排名发生变化时输出
+                {
+                    std::cout << teamName << " " << displaced.get_name() << " " << team_.get_problem_solved().size()
+                              << " " << team_.get_time_punishment() << '\n';
+                }
+            }
+
+            // 删除旧键并插入更新后的键
+            rankingSet.erase(oldKey);      // O(log N)
+            freezeOrder.erase(oldKey);     // 从未解冻集合中删除旧键
+            rankingSet.insert(team_);      // O(log N)
+
+            // 若仍有冻结题则把更新后的键加入 freezeOrder
+            if (team_.get_has_frozen())
+                freezeOrder.insert(team_); // O(log N)
     }
     /**
      * execute
@@ -438,9 +441,18 @@ public:
                     }
                     std::cout << "\n";
                 }
-                while (unfreeze_process())
+                std::set<team> freezeOrder; // 未解冻的队伍排序
+                for (const auto &pair: teamMap)
                 {
-                    continue;
+                    const team &team_ = pair.second;
+                    if (team_.get_has_frozen())
+                    {
+                        freezeOrder.insert(team_);
+                    }
+                }
+                while (freezeOrder.size() > 0)
+                {
+                    unfreeze_process(freezeOrder);
                 }
                 // 滚榜结束后刷新，输出最终正确排名
                 flush();

@@ -57,6 +57,7 @@ public:
     team(const std::string &team_name) : name(team_name), rank(0), time_punishment(0){};
     std::string get_name() const { return name; }
     int &get_rank() { return rank; }
+    int get_rank() const { return rank; }
     std::vector<ProblemStatus> &get_submit_status() { return problem_submit_status; }
     std::vector<int> &get_problem_solved() { return problem_solved; }
     const std::vector<int> &get_problem_solved() const { return problem_solved; }

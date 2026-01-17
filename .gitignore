@@ -4,3 +4,5 @@ scripts
 timer
 Callgrind.png
 .vscode
+build
+test_output

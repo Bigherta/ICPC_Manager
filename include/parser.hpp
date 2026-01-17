@@ -4,10 +4,9 @@
 #include <iostream>
 #include <set>
 #include <string>
-#include <map>
+#include <unordered_map>
 #include "team.hpp"
 #include "token.hpp"
-#include <unordered_map>
 
 /**
  * 关键字 → TokenType 的映射表
@@ -57,33 +56,15 @@ private:
     /**
      * teamName → team 对象
      */
-    std::map<std::string, team> teamMap;
+    std::unordered_map<std::string, team> teamMap;
 
     /**
      * 排名集合（优化）
      * 存储指向 `team` 的指针以避免频繁拷贝和构造/析构开销
      */
-    struct TeamPtrLess {
-        bool operator()(const team *a, const team *b) const
-        {
-            if (a->get_problem_solved().size() != b->get_problem_solved().size())
-            {
-                return a->get_problem_solved().size() > b->get_problem_solved().size();
-            }
-            if (a->get_time_punishment() != b->get_time_punishment())
-            {
-                return a->get_time_punishment() < b->get_time_punishment();
-            }
-            for (auto it_a = a->get_problem_solved().rbegin(), it_b = b->get_problem_solved().rbegin();
-                 it_a != a->get_problem_solved().rend() && it_b != b->get_problem_solved().rend(); ++it_a, ++it_b)
-            {
-                if (*it_a != *it_b)
-                {
-                    return *it_a < *it_b;
-                }
-            }
-            return a->get_name() < b->get_name();
-        }
+    struct TeamPtrLess
+    {
+        bool operator()(const team *a, const team *b) const { return *a < *b; }
     };
 
     std::set<team *, TeamPtrLess> rankingSet;
@@ -101,6 +82,10 @@ private:
     int duration_time;
 
 public:
+    parser()
+    {
+        teamMap.reserve(10000);
+    }
     /**
      * tokenize
      * 对输入的一整行命令进行分词
@@ -199,8 +184,8 @@ public:
         }
 
         // 为保持原实现语义：在 rankingSet 仍含旧键时，使用一个 "newKey" 快照来计算 lower_bound
-        team oldKey = *oldPtr;            // 旧快照
-        team newKey = oldKey;             // 在拷贝上修改，避免在集合中直接修改元素（UB）
+        team oldKey = *oldPtr; // 旧快照
+        team newKey = oldKey; // 在拷贝上修改，避免在集合中直接修改元素（UB）
         auto &new_statuses = newKey.get_submit_status();
         auto &status = new_statuses[idx];
         status.state = 0;
@@ -229,8 +214,8 @@ public:
             team *displaced = *it;
             if (displaced->get_name() != teamName)
             {
-                std::cout << teamName << " " << displaced->get_name() << " " << newKey.get_problem_solved().size() << " "
-                          << newKey.get_time_punishment() << '\n';
+                std::cout << teamName << " " << displaced->get_name() << " " << newKey.get_problem_solved().size()
+                          << " " << newKey.get_time_punishment() << '\n';
             }
         }
 
@@ -281,7 +266,7 @@ public:
                     if (teamMap.find(teamName) == teamMap.end())
                     {
                         teamMap.emplace(teamName, team(teamName));
-                        rankingSet.insert(&teamMap[teamName]);
+                        rankingSet.emplace(&teamMap[teamName]);
                         std::cout << "[Info]Add successfully.\n";
                     }
                     else
@@ -537,7 +522,7 @@ public:
                     auto &statuses = team_.get_submit_status();
                     if (is_search_all_status && is_search_all_problems)
                     {
-                        auto last_submit = team_.get_last_submit();
+                        auto &last_submit = team_.get_last_submit();
                         if (last_submit.second == -1)
                             std::cout << "Cannot find any submission." << "\n";
                         else
@@ -576,28 +561,28 @@ public:
                         char bestProblem = 'A';
                         if (target == "Accepted")
                         {
-                            auto p = team_.get_last_accept();
+                            auto &p = team_.get_last_accept();
                             bestTime = p.second;
                             if (p.first >= 0)
                                 bestProblem = char('A' + p.first);
                         }
                         else if (target == "Wrong_Answer")
                         {
-                            auto p = team_.get_last_wrong();
+                            auto &p = team_.get_last_wrong();
                             bestTime = p.second;
                             if (p.first >= 0)
                                 bestProblem = char('A' + p.first);
                         }
                         else if (target == "Time_Limit_Exceed")
                         {
-                            auto p = team_.get_last_tle();
+                            auto &p = team_.get_last_tle();
                             bestTime = p.second;
                             if (p.first >= 0)
                                 bestProblem = char('A' + p.first);
                         }
                         else if (target == "Runtime_Error")
                         {
-                            auto p = team_.get_last_re();
+                            auto &p = team_.get_last_re();
                             bestTime = p.second;
                             if (p.first >= 0)
                                 bestProblem = char('A' + p.first);

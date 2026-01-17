@@ -1,11 +1,11 @@
 #pragma once
 #ifndef TEAM_HPP
 #define TEAM_HPP
+#include <algorithm>
 #include <ostream>
 #include <string>
 #include <utility>
 #include <vector>
-#include <algorithm>
 #include "token.hpp"
 class team
 {
@@ -78,11 +78,11 @@ public:
     bool &get_has_frozen() { return has_frozen; }
     bool get_has_frozen() const { return has_frozen; }
     // last_* accessors
-    std::pair<std::pair<int, TokenType>, int> get_last_submit() const { return last_submit; }
-    std::pair<int, int> get_last_accept() const { return last_accept; }
-    std::pair<int, int> get_last_wrong() const { return last_wrong; }
-    std::pair<int, int> get_last_re() const { return last_re; }
-    std::pair<int, int> get_last_tle() const { return last_tle; }
+    std::pair<std::pair<int, TokenType>, int> &get_last_submit() { return last_submit; }
+    std::pair<int, int> &get_last_accept()  { return last_accept; }
+    std::pair<int, int> &get_last_wrong()  { return last_wrong; }
+    std::pair<int, int> &get_last_re()  { return last_re; }
+    std::pair<int, int> &get_last_tle()  { return last_tle; }
     void set_last_submit(int probIdx, TokenType status, int time) { last_submit = {{probIdx, status}, time}; }
     void set_last_accept(int probIdx, int time) { last_accept = {probIdx, time}; }
     void set_last_wrong(int probIdx, int time) { last_wrong = {probIdx, time}; }

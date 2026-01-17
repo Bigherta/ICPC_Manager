@@ -60,10 +60,33 @@ private:
     std::map<std::string, team> teamMap;
 
     /**
-     * 排名集合
-     * 依赖 team 的 operator< 实现排序
+     * 排名集合（优化）
+     * 存储指向 `team` 的指针以避免频繁拷贝和构造/析构开销
      */
-    std::set<team> rankingSet;
+    struct TeamPtrLess {
+        bool operator()(const team *a, const team *b) const
+        {
+            if (a->get_problem_solved().size() != b->get_problem_solved().size())
+            {
+                return a->get_problem_solved().size() > b->get_problem_solved().size();
+            }
+            if (a->get_time_punishment() != b->get_time_punishment())
+            {
+                return a->get_time_punishment() < b->get_time_punishment();
+            }
+            for (auto it_a = a->get_problem_solved().rbegin(), it_b = b->get_problem_solved().rbegin();
+                 it_a != a->get_problem_solved().rend() && it_b != b->get_problem_solved().rend(); ++it_a, ++it_b)
+            {
+                if (*it_a != *it_b)
+                {
+                    return *it_a < *it_b;
+                }
+            }
+            return a->get_name() < b->get_name();
+        }
+    };
+
+    std::set<team *, TeamPtrLess> rankingSet;
 
     /// 比赛是否已经开始
     bool is_started = false;
@@ -129,36 +152,36 @@ public:
 
     void flush()
     {
+        // 重建 rankingSet 为指针集合，避免复制大量 team 对象
         rankingSet.clear();
-
         for (auto &pair: teamMap)
         {
-            rankingSet.insert(pair.second);
+            rankingSet.insert(&pair.second);
         }
 
         int rank = 1;
         for (auto iter = rankingSet.begin(); iter != rankingSet.end(); ++iter)
         {
-            std::string teamName = iter->get_name();
+            std::string teamName = (*iter)->get_name();
             teamMap[teamName].get_rank() = rank++;
         }
     }
 
-    void unfreeze_process(std::set<team> &freezeOrder)
+    void unfreeze_process(std::set<team *, TeamPtrLess> &freezeOrder)
     {
         if (freezeOrder.empty())
             return;
 
-        // 取排名最靠后且还有冻结题的队伍（freezeOrder 维护与 rankingSet 相同的比较器）
+        // 取排名最靠后且还有冻结题的队伍（freezeOrder 存储 team*）
         auto rev_it = freezeOrder.rbegin();
-        team oldKey = *rev_it; // 旧的键（副本）
-        std::string teamName = oldKey.get_name();
-        team &team_ = teamMap[teamName];
-        auto &statuses = team_.get_submit_status();
+        team *oldPtr = *rev_it; // 指向被处理队伍的指针
+        std::string teamName = oldPtr->get_name();
+        team &team_ref = teamMap[teamName];
+        auto &statuses = team_ref.get_submit_status();
 
         // 仅解冻该队编号最小的一道冻结题
-        int idx = -1;
-        for (int i = 0; i < static_cast<int>(statuses.size()); ++i)
+        size_t idx = statuses.size();
+        for (size_t i = 0; i < statuses.size(); ++i)
         {
             if (statuses[i].state == 2)
             {
@@ -168,26 +191,28 @@ public:
         }
 
         // 若没有冻结题则从 freezeOrder 中移除旧键
-        if (idx == -1)
+        if (idx == statuses.size())
         {
-            team_.get_has_frozen() = false;
-            freezeOrder.erase(oldKey);
+            team_ref.get_has_frozen() = false;
+            freezeOrder.erase(oldPtr);
             return;
         }
 
-        auto &status = statuses[idx];
-        // 解除冻结，按是否通过决定是否增加罚时与通过集合
+        // 为保持原实现语义：在 rankingSet 仍含旧键时，使用一个 "newKey" 快照来计算 lower_bound
+        team oldKey = *oldPtr;            // 旧快照
+        team newKey = oldKey;             // 在拷贝上修改，避免在集合中直接修改元素（UB）
+        auto &new_statuses = newKey.get_submit_status();
+        auto &status = new_statuses[idx];
         status.state = 0;
         if (status.first_ac_time != -1)
         {
             status.state = 1;
-            team_.get_time_punishment() += status.first_ac_time + status.error_count * 20;
-            team_.add_solved_time(status.first_ac_time);
+            newKey.get_time_punishment() += status.first_ac_time + status.error_count * 20;
+            newKey.add_solved_time(status.first_ac_time);
         }
 
-        // 更新队伍是否仍有冻结题
         bool any_frozen_left = false;
-        for (const auto &s: statuses)
+        for (const auto &s: new_statuses)
         {
             if (s.state == 2)
             {
@@ -195,29 +220,30 @@ public:
                 break;
             }
         }
-        team_.get_has_frozen() = any_frozen_left;
+        newKey.get_has_frozen() = any_frozen_left;
 
-        // 在 rankingSet 中先移除旧键，再根据新键查找将被取代的队伍
-        // 先根据当前 rankingSet（仍含旧键）计算将被取代的队伍，以匹配原实现语义
-        auto it = rankingSet.lower_bound(team_); // O(log N)
+        // 在仍含旧键的 rankingSet 上，用 newKey 计算将被取代的队伍
+        auto it = rankingSet.lower_bound(&newKey); // O(log N)
         if (it != rankingSet.end())
         {
-            team displaced = *it;
-            if (displaced.get_name() != teamName) // 仅在排名发生变化时输出
+            team *displaced = *it;
+            if (displaced->get_name() != teamName)
             {
-                std::cout << teamName << " " << displaced.get_name() << " " << team_.get_problem_solved().size() << " "
-                          << team_.get_time_punishment() << '\n';
+                std::cout << teamName << " " << displaced->get_name() << " " << newKey.get_problem_solved().size() << " "
+                          << newKey.get_time_punishment() << '\n';
             }
         }
 
-        // 删除旧键并插入更新后的键
-        rankingSet.erase(oldKey); // O(log N)
-        freezeOrder.erase(oldKey); // 从未解冻集合中删除旧键
-        rankingSet.insert(team_); // O(log N)
+        // 从集合中移除旧指针，并把 newKey 写回到 teamMap（替换旧对象），再插入新指针
+        rankingSet.erase(oldPtr);
+        freezeOrder.erase(oldPtr);
 
-        // 若仍有冻结题则把更新后的键加入 freezeOrder
-        if (team_.get_has_frozen())
-            freezeOrder.insert(team_); // O(log N)
+        teamMap[teamName] = newKey; // 复制更新后的快照到实际存储
+        team *ptr = &teamMap[teamName];
+        rankingSet.insert(ptr);
+
+        if (ptr->get_has_frozen())
+            freezeOrder.insert(ptr);
     }
     /**
      * execute
@@ -254,9 +280,8 @@ public:
                     // 检查重名
                     if (teamMap.find(teamName) == teamMap.end())
                     {
-                        team newTeam(teamName);
-                        teamMap[teamName] = newTeam;
-                        rankingSet.insert(newTeam);
+                        teamMap.emplace(teamName, team(teamName));
+                        rankingSet.insert(&teamMap[teamName]);
                         std::cout << "[Info]Add successfully.\n";
                     }
                     else
@@ -293,7 +318,7 @@ public:
                 int rank = 1;
                 for (auto iter = rankingSet.begin(); iter != rankingSet.end(); ++iter)
                 {
-                    std::string teamName = iter->get_name();
+                    std::string teamName = (*iter)->get_name();
                     teamMap[teamName].get_rank() = rank++;
 
                     // 初始化每支队伍的每道题提交记录为默认 ProblemStatus
@@ -434,7 +459,7 @@ public:
                 flush();
                 for (auto iterator = rankingSet.begin(); iterator != rankingSet.end(); ++iterator)
                 {
-                    std::string teamName = iterator->get_name();
+                    std::string teamName = (*iterator)->get_name();
                     team &team_ = teamMap[teamName];
                     std::cout << teamName << " " << team_.get_rank() << " " << team_.get_problem_solved().size() << " "
                               << team_.get_time_punishment() << " ";
@@ -444,13 +469,13 @@ public:
                     }
                     std::cout << "\n";
                 }
-                std::set<team> freezeOrder; // 未解冻的队伍排序
-                for (const auto &pair: teamMap)
+                std::set<team *, TeamPtrLess> freezeOrder; // 未解冻的队伍排序（指针集合，使用 TeamPtrLess）
+                for (auto &pair: teamMap)
                 {
-                    const team &team_ = pair.second;
+                    team &team_ = pair.second;
                     if (team_.get_has_frozen())
                     {
-                        freezeOrder.insert(team_);
+                        freezeOrder.insert(&team_);
                     }
                 }
                 while (freezeOrder.size() > 0)
@@ -461,7 +486,7 @@ public:
                 flush();
                 for (auto iterator = rankingSet.begin(); iterator != rankingSet.end(); ++iterator)
                 {
-                    std::string teamName = iterator->get_name();
+                    std::string teamName = (*iterator)->get_name();
                     team &team_ = teamMap[teamName];
                     std::cout << teamName << " " << team_.get_rank() << " " << team_.get_problem_solved().size() << " "
                               << team_.get_time_punishment() << " ";
@@ -522,13 +547,14 @@ public:
                     }
                     else if (is_search_all_status && !is_search_all_problems)
                     {
-                        int idx = problemName[0] - 'A';
-                        if (idx < 0 || idx >= statuses.size())
+                        int tmp = problemName[0] - 'A';
+                        if (tmp < 0 || static_cast<size_t>(tmp) >= statuses.size())
                         {
                             std::cout << "Cannot find any submission." << "\n";
                         }
                         else
                         {
+                            size_t idx = static_cast<size_t>(tmp);
                             auto &s = statuses[idx];
                             if (s.last_submit_time == -1)
                             {
@@ -584,13 +610,14 @@ public:
                     }
                     else
                     {
-                        int idx = problemName[0] - 'A';
-                        if (idx < 0 || idx >= statuses.size())
+                        int tmp = problemName[0] - 'A';
+                        if (tmp < 0 || static_cast<size_t>(tmp) >= statuses.size())
                         {
                             std::cout << "Cannot find any submission." << "\n";
                         }
                         else
                         {
+                            size_t idx = static_cast<size_t>(tmp);
                             auto &s = statuses[idx];
                             int t = -1;
                             if (statusName == "Accepted")

@@ -64,15 +64,15 @@ private:
     std::unordered_map<std::string, team> teamMap;
 
     /**
-     * 排名集合
-     * 存储指向 `team` 的指针以避免频繁拷贝和构造/析构开销
+     * 用于在指针集合中比较 team 指针的大小
      */
     struct TeamPtrLess
     {
         bool operator()(const team *a, const team *b) const { return *a < *b; }
     };
 
-    std::set<team *, TeamPtrLess> rankingSet;
+    std::vector<team *> rankingVec;
+
 
     /// 比赛是否已经开始
     bool is_started = false;
@@ -120,25 +120,9 @@ public:
 
     void flush()
     {
-        // 更快的重建：先把指针收集到 vector 并排序，然后带 hint 顺序插入到 set 中以减少平衡开销
-        std::vector<team *> vec;
-        vec.reserve(teamMap.size());
-        for (auto &pair: teamMap)
-        {
-            vec.push_back(&pair.second);
-        }
-
-        std::sort(vec.begin(), vec.end(), [](const team *a, const team *b) { return *a < *b; });
-
-        rankingSet.clear();
-        auto hint = rankingSet.end();
-        for (auto ptr: vec)
-        {
-            hint = rankingSet.insert(hint, ptr);
-        }
-
+        std::sort(rankingVec.begin(), rankingVec.end(), TeamPtrLess());
         int rank = 1;
-        for (auto ptr: vec)
+        for (auto ptr: rankingVec)
         {
             ptr->get_rank() = rank++;
         }
@@ -175,9 +159,8 @@ public:
             return;
         }
 
-        // 为保持原实现语义：在 rankingSet 仍含旧键时，使用一个 "newKey" 快照来计算 lower_bound
-        team oldKey = *oldPtr; // 旧快照
-        team newKey = oldKey; // 在拷贝上修改，避免在集合中直接修改元素（UB）
+        // 为保持原实现语义：在 rankingVec 仍含旧键时，使用一个 "newKey" 快照来计算 lower_bound
+        team newKey = *oldPtr; // 在拷贝上修改，避免在集合中直接修改元素
         auto &new_statuses = newKey.get_submit_status();
         auto &status = new_statuses[idx];
         status.state = 0;
@@ -200,25 +183,30 @@ public:
         }
         newKey.get_has_frozen() = any_frozen_left;
 
-        // 在仍含旧键的 rankingSet 上，用 newKey 计算将被取代的队伍
-        auto it = rankingSet.lower_bound(&newKey); // O(log N)
-        if (it != rankingSet.end())
+        // 在仍含旧键的排序向量上，用 newKey 计算将被取代的队伍
+        const team *newKeyPtr = &newKey;
+        auto it = std::lower_bound(rankingVec.begin(), rankingVec.end(), newKeyPtr, TeamPtrLess()); // O(log N)
+
+        team *displaced = *it;
+        if (displaced->get_name() != teamName)
         {
-            team *displaced = *it;
-            if (displaced->get_name() != teamName)
-            {
-                outbuf << teamName << " " << displaced->get_name() << " " << newKey.get_problem_solved().size() << " "
-                       << newKey.get_time_punishment() << '\n';
-            }
+            outbuf << teamName << " " << displaced->get_name() << " " << newKey.get_problem_solved().size() << " "
+                   << newKey.get_time_punishment() << '\n';
         }
 
-        // 从集合中移除旧指针，并把 newKey 写回到 teamMap（替换旧对象），再插入新指针
-        rankingSet.erase(oldPtr);
+
+        // 从排序向量中移除旧指针，并把 newKey 写回到 teamMap，再按序插入新指针
+        auto oldIt = std::lower_bound(rankingVec.begin(), rankingVec.end(), oldPtr, TeamPtrLess());
+        if (oldIt != rankingVec.end() && *oldIt == oldPtr)
+        {
+            rankingVec.erase(oldIt);
+        }
         freezeOrder.erase(oldPtr);
 
         teamMap[teamName] = newKey; // 复制更新后的快照到实际存储
         team *ptr = &teamMap[teamName];
-        rankingSet.insert(ptr);
+        auto insertPos = std::lower_bound(rankingVec.begin(), rankingVec.end(), ptr, TeamPtrLess());
+        rankingVec.insert(insertPos, ptr);
 
         if (ptr->get_has_frozen())
             freezeOrder.insert(ptr);
@@ -259,7 +247,7 @@ public:
                     if (teamMap.find(teamName) == teamMap.end())
                     {
                         teamMap.emplace(teamName, team(teamName));
-                        rankingSet.emplace(&teamMap[teamName]);
+                        rankingVec.emplace_back(&teamMap[teamName]);
                         std::cout << "[Info]Add successfully.\n";
                     }
                     else
@@ -293,16 +281,14 @@ public:
                 problem_count = std::stoi(std::string(count->value));
 
                 // 初始化排名和每道题的提交状态
-                int rank = 1;
-                for (auto iter = rankingSet.begin(); iter != rankingSet.end(); ++iter)
+                for (auto ptr: rankingVec)
                 {
-                    team *ptr = *iter;
                     team &t = *ptr;
-                    t.get_rank() = rank++;
-
                     // 初始化每支队伍的每道题提交记录为默认 ProblemStatus
                     t.get_submit_status().resize(problem_count);
                 }
+
+                flush();
                 break;
             }
 
@@ -441,9 +427,8 @@ public:
                 flush();
 
                 std::ostringstream outbuf;
-                for (auto iterator = rankingSet.begin(); iterator != rankingSet.end(); ++iterator)
+                for (auto ptr: rankingVec)
                 {
-                    team *ptr = *iterator;
                     team &team_ = *ptr;
                     outbuf << team_.get_name() << " " << team_.get_rank() << " " << team_.get_problem_solved().size()
                            << " " << team_.get_time_punishment() << " ";
@@ -469,9 +454,8 @@ public:
                 // 滚榜结束后刷新，输出最终正确排名
                 flush();
 
-                for (auto iterator = rankingSet.begin(); iterator != rankingSet.end(); ++iterator)
+                for (auto ptr: rankingVec)
                 {
-                    team *ptr = *iterator;
                     team &team_ = *ptr;
                     outbuf << team_.get_name() << " " << team_.get_rank() << " " << team_.get_problem_solved().size()
                            << " " << team_.get_time_punishment() << " ";

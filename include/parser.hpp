@@ -8,6 +8,7 @@
 #include <sstream>
 #include <string>
 #include <string_view>
+#include <unistd.h>
 #include <unordered_map>
 #include <vector>
 #include "team.hpp"
@@ -32,7 +33,7 @@ inline const std::unordered_map<std::string_view, TokenType> keywordMap = {
         {"Runtime_Error", TokenType::RUNTIME_ERROR},
         {"Time_Limit_Exceed", TokenType::TIME_LIMIT_EXCEED}};
 
-inline std::string tokenTypeToStatusString(const TokenType& t)
+inline std::string tokenTypeToStatusString(const TokenType &t)
 {
     switch (t)
     {
@@ -143,7 +144,7 @@ public:
         }
     }
 
-    void unfreeze_process(std::set<team *, TeamPtrLess> &freezeOrder, std::ostringstream &outbuf)
+    void unfreeze_process(std::set<team *, TeamPtrLess> &freezeOrder, std::ostringstream &out)
     {
         if (freezeOrder.empty())
             return;
@@ -205,8 +206,8 @@ public:
         team *displaced = *it;
         if (displaced->get_name() != teamName)
         {
-            outbuf << teamName << " " << displaced->get_name() << " " << newKey.get_problem_solved().size() << " "
-                   << newKey.get_time_punishment() << '\n';
+            out << teamName << " " << displaced->get_name() << " " << newKey.get_problem_solved().size() << " "
+                << newKey.get_time_punishment() << '\n';
         }
 
 
@@ -233,6 +234,7 @@ public:
      */
     void execute(const std::string &cmd)
     {
+        std::ostringstream out; // 统一缓冲除滚榜外的输出
         tokenstream ts = tokenize(cmd);
 
         // 获取命令关键字
@@ -249,7 +251,10 @@ public:
                 // 比赛开始后禁止添加队伍
                 if (is_started)
                 {
-                    std::cout << "[Error]Add failed: competition has started.\n";
+                    out << "[Error]Add failed: competition has started.\n";
+                    std::string s = out.str();
+                    ssize_t r = ::write(STDOUT_FILENO, s.data(), s.size());
+                    (void) r;
                     return;
                 }
 
@@ -263,11 +268,11 @@ public:
                     {
                         teamMap.emplace(teamName, team(teamName));
                         rankingVec.emplace_back(&teamMap[teamName]);
-                        std::cout << "[Info]Add successfully.\n";
+                        out << "[Info]Add successfully.\n";
                     }
                     else
                     {
-                        std::cout << "[Error]Add failed: duplicated team name.\n";
+                        out << "[Error]Add failed: duplicated team name.\n";
                     }
                 }
                 break;
@@ -280,12 +285,15 @@ public:
             case TokenType::START: {
                 if (is_started)
                 {
-                    std::cout << "[Error]Start failed: competition has started.\n";
+                    out << "[Error]Start failed: competition has started.\n";
+                    std::string s = out.str();
+                    ssize_t r = ::write(STDOUT_FILENO, s.data(), s.size());
+                    (void) r;
                     return;
                 }
 
                 is_started = true;
-                std::cout << "[Info]Competition starts.\n";
+                out << "[Info]Competition starts.\n";
 
                 ts.get(); // 跳过 "DURATION"
                 token *duration = ts.get(); // 比赛时长
@@ -408,14 +416,17 @@ public:
              */
             case TokenType::FLUSH: {
                 flush();
-                std::cout << "[Info]Flush scoreboard.\n";
+                out << "[Info]Flush scoreboard.\n";
                 break;
             }
 
             case TokenType::FREEZE: {
                 if (is_frozen)
                 {
-                    std::cout << "[Error]Freeze failed: scoreboard has been frozen.\n";
+                    out << "[Error]Freeze failed: scoreboard has been frozen.\n";
+                    std::string s = out.str();
+                    ssize_t r = ::write(STDOUT_FILENO, s.data(), s.size());
+                    (void) r;
                     return;
                 }
                 // 在设置封榜标志前，快照每支队伍每道题的封榜前统计
@@ -428,31 +439,35 @@ public:
                     }
                 }
                 is_frozen = true;
-                std::cout << "[Info]Freeze scoreboard.\n";
+                out << "[Info]Freeze scoreboard.\n";
                 break;
             }
 
             case TokenType::SCROLL: {
                 if (!is_frozen)
                 {
-                    std::cout << "[Error]Scroll failed: scoreboard has not been frozen.\n";
+                    static constexpr const char msg[] = "[Error]Scroll failed: scoreboard has not been frozen.\n";
+                    ssize_t r = ::write(STDOUT_FILENO, msg, sizeof(msg) - 1);
+                    (void) r;
                     return;
                 }
                 is_frozen = false;
-                std::cout << "[Info]Scroll scoreboard.\n";
+                {
+                    static constexpr const char msg[] = "[Info]Scroll scoreboard.\n";
+                    ssize_t r = ::write(STDOUT_FILENO, msg, sizeof(msg) - 1);
+                    (void) r;
+                }
                 flush();
-
-                std::ostringstream outbuf;
                 for (auto ptr: rankingVec)
                 {
                     team &team_ = *ptr;
-                    outbuf << team_.get_name() << " " << team_.get_rank() << " " << team_.get_problem_solved().size()
-                           << " " << team_.get_time_punishment() << " ";
+                    out << team_.get_name() << " " << team_.get_rank() << " " << team_.get_problem_solved().size()
+                        << " " << team_.get_time_punishment() << " ";
                     for (const auto &status: team_.get_submit_status())
                     {
-                        outbuf << status << " ";
+                        out << status << " ";
                     }
-                    outbuf << "\n";
+                    out << "\n";
                 }
                 std::set<team *, TeamPtrLess> freezeOrder; // 未解冻的队伍排序（指针集合，使用 TeamPtrLess）
                 for (auto &pair: teamMap)
@@ -465,7 +480,7 @@ public:
                 }
                 while (freezeOrder.size() > 0)
                 {
-                    unfreeze_process(freezeOrder, outbuf);
+                    unfreeze_process(freezeOrder, out);
                 }
                 // 滚榜结束后刷新，输出最终正确排名
                 flush();
@@ -473,16 +488,14 @@ public:
                 for (auto ptr: rankingVec)
                 {
                     team &team_ = *ptr;
-                    outbuf << team_.get_name() << " " << team_.get_rank() << " " << team_.get_problem_solved().size()
-                           << " " << team_.get_time_punishment() << " ";
+                    out << team_.get_name() << " " << team_.get_rank() << " " << team_.get_problem_solved().size()
+                        << " " << team_.get_time_punishment() << " ";
                     for (const auto &status: team_.get_submit_status())
                     {
-                        outbuf << status << " ";
+                        out << status << " ";
                     }
-                    outbuf << "\n";
+                    out << "\n";
                 }
-                std::cout << outbuf.str();
-
                 break;
             }
 
@@ -492,18 +505,16 @@ public:
                 auto it_rank = teamMap.find(teamName);
                 if (it_rank != teamMap.end())
                 {
-                    std::cout << "[Info]Complete query ranking." << "\n";
+                    out << "[Info]Complete query ranking.\n";
                     if (is_frozen)
                     {
-                        std::cout << "[Warning]Scoreboard is frozen. The ranking may be inaccurate until it were "
-                                     "scrolled."
-                                  << "\n";
+                        out << "[Warning]Scoreboard is frozen. The ranking may be inaccurate until it were scrolled.\n";
                     }
-                    std::cout << teamName << " NOW AT RANKING " << it_rank->second.get_rank() << "\n";
+                    out << teamName << " NOW AT RANKING " << it_rank->second.get_rank() << "\n";
                 }
                 else
                 {
-                    std::cout << "[Error]Query ranking failed: cannot find the team.\n";
+                    out << "[Error]Query ranking failed: cannot find the team.\n";
                 }
                 break;
             }
@@ -519,7 +530,7 @@ public:
                 std::string teamName(nameToken->value);
                 if (teamMap.find(teamName) != teamMap.end())
                 {
-                    std::cout << "[Info]Complete query submission.\n";
+                    out << "[Info]Complete query submission.\n";
                     auto &team_ = teamMap[teamName];
                     bool is_search_all_problems = (problemName == "ALL");
                     bool is_search_all_status = (statusName == "ALL");
@@ -528,18 +539,18 @@ public:
                     {
                         auto &last_submit = team_.get_last_submit();
                         if (last_submit.second == -1)
-                            std::cout << "Cannot find any submission." << "\n";
+                            out << "Cannot find any submission.\n";
                         else
-                            std::cout << teamName << " " << char('A' + last_submit.first.first) << " "
-                                      << tokenTypeToStatusString(last_submit.first.second) << " " << last_submit.second
-                                      << "\n";
+                            out << teamName << " " << char('A' + last_submit.first.first) << " "
+                                << tokenTypeToStatusString(last_submit.first.second) << " " << last_submit.second
+                                << "\n";
                     }
                     else if (is_search_all_status && !is_search_all_problems)
                     {
                         int tmp = problemName[0] - 'A';
                         if (tmp < 0 || static_cast<size_t>(tmp) >= statuses.size())
                         {
-                            std::cout << "Cannot find any submission." << "\n";
+                            out << "Cannot find any submission.\n";
                         }
                         else
                         {
@@ -547,13 +558,12 @@ public:
                             auto &s = statuses[idx];
                             if (s.last_submit_time == -1)
                             {
-                                std::cout << "Cannot find any submission." << "\n";
+                                out << "Cannot find any submission.\n";
                             }
                             else
                             {
-                                std::cout << teamName << " " << problemName << " "
-                                          << tokenTypeToStatusString(s.last_submit_type) << " " << s.last_submit_time
-                                          << "\n";
+                                out << teamName << " " << problemName << " "
+                                    << tokenTypeToStatusString(s.last_submit_type) << " " << s.last_submit_time << "\n";
                             }
                         }
                     }
@@ -593,16 +603,16 @@ public:
                         }
 
                         if (bestTime == -1)
-                            std::cout << "Cannot find any submission." << "\n";
+                            out << "Cannot find any submission.\n";
                         else
-                            std::cout << teamName << " " << bestProblem << " " << statusName << " " << bestTime << "\n";
+                            out << teamName << " " << bestProblem << " " << statusName << " " << bestTime << "\n";
                     }
                     else
                     {
                         int tmp = problemName[0] - 'A';
                         if (tmp < 0 || static_cast<size_t>(tmp) >= statuses.size())
                         {
-                            std::cout << "Cannot find any submission." << "\n";
+                            out << "Cannot find any submission.\n";
                         }
                         else
                         {
@@ -619,26 +629,33 @@ public:
                                 t = s.last_re;
 
                             if (t == -1)
-                                std::cout << "Cannot find any submission." << "\n";
+                                out << "Cannot find any submission.\n";
                             else
-                                std::cout << teamName << " " << problemName << " " << statusName << " " << t << "\n";
+                                out << teamName << " " << problemName << " " << statusName << " " << t << "\n";
                         }
                     }
                 }
                 else
                 {
-                    std::cout << "[Error]Query submission failed: cannot find the team.\n";
+                    out << "[Error]Query submission failed: cannot find the team.\n";
                 }
                 break;
             }
 
             case TokenType::END: {
-                std::cout << "[Info]Competition ends.\n";
+                out << "[Info]Competition ends.\n";
                 break;
             }
 
             default:
                 break;
+        }
+        // 统一在函数末尾一次性输出（使用 write() 直接写入标准输出）
+        std::string outputStr = out.str();
+        if (!outputStr.empty())
+        {
+            ssize_t result = ::write(STDOUT_FILENO, outputStr.data(), outputStr.size());
+            (void) result; // 避免未使用警告
         }
     }
 };

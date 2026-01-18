@@ -17,22 +17,22 @@
  * 关键字 → TokenType 的映射表
  * 用于词法分析阶段，把输入的字符串关键字转成对应的 TokenType
  */
-inline std::unordered_map<std::string, TokenType> keywordMap = {{"ADDTEAM", TokenType::ADDTEAM},
-                                                                {"START", TokenType::START},
-                                                                {"SUBMIT", TokenType::SUBMIT},
-                                                                {"FLUSH", TokenType::FLUSH},
-                                                                {"FREEZE", TokenType::FREEZE},
-                                                                {"SCROLL", TokenType::SCROLL},
-                                                                {"QUERY_RANKING", TokenType::QUERY_RANKING},
-                                                                {"QUERY_SUBMISSION", TokenType::QUERY_SUBMISSION},
-                                                                {"END", TokenType::END},
+inline const std::unordered_map<std::string_view, TokenType> keywordMap = {
+        {"ADDTEAM", TokenType::ADDTEAM},
+        {"START", TokenType::START},
+        {"SUBMIT", TokenType::SUBMIT},
+        {"FLUSH", TokenType::FLUSH},
+        {"FREEZE", TokenType::FREEZE},
+        {"SCROLL", TokenType::SCROLL},
+        {"QUERY_RANKING", TokenType::QUERY_RANKING},
+        {"QUERY_SUBMISSION", TokenType::QUERY_SUBMISSION},
+        {"END", TokenType::END},
+        {"Accepted", TokenType::ACCEPTED},
+        {"Wrong_Answer", TokenType::WRONG_ANSWER},
+        {"Runtime_Error", TokenType::RUNTIME_ERROR},
+        {"Time_Limit_Exceed", TokenType::TIME_LIMIT_EXCEED}};
 
-                                                                {"Accepted", TokenType::ACCEPTED},
-                                                                {"Wrong_Answer", TokenType::WRONG_ANSWER},
-                                                                {"Runtime_Error", TokenType::RUNTIME_ERROR},
-                                                                {"Time_Limit_Exceed", TokenType::TIME_LIMIT_EXCEED}};
-
-inline std::string tokenTypeToStatusString(TokenType t)
+inline std::string tokenTypeToStatusString(const TokenType& t)
 {
     switch (t)
     {
@@ -87,7 +87,20 @@ private:
     int duration_time;
 
 public:
-    parser() { teamMap.reserve(10000); }
+    parser()
+    {
+        teamMap.reserve(10000);
+        rankingVec.reserve(10000);
+    }
+    int parse_int(const std::string_view &sv)
+    {
+        int result = 0;
+        for (const char &c: sv)
+        {
+            result = result * 10 + (c - '0');
+        }
+        return result;
+    }
     /**
      * tokenize
      * 对输入的一整行命令进行分词
@@ -96,6 +109,7 @@ public:
     tokenstream tokenize(const std::string &input)
     {
         std::vector<token> tokens;
+        tokens.reserve(input.size() / 2);
         size_t pos = 0;
         while (pos < input.length())
         {
@@ -110,7 +124,8 @@ public:
 
             std::string_view sv(input.data() + start, pos - start);
             token tok;
-            tok.type = keywordMap.count(std::string(sv)) ? keywordMap[std::string(sv)] : TokenType::UNKNOWN;
+            auto it = keywordMap.find(sv);
+            tok.type = (it == keywordMap.end()) ? TokenType::UNKNOWN : it->second;
             tok.value = sv;
             tokens.push_back(tok);
         }
@@ -274,18 +289,19 @@ public:
 
                 ts.get(); // 跳过 "DURATION"
                 token *duration = ts.get(); // 比赛时长
-                duration_time = std::stoi(std::string(duration->value));
+                duration_time = parse_int(duration->value);
 
                 ts.get(); // 跳过 "PROBLEM"
                 token *count = ts.get(); // 题目数量
-                problem_count = std::stoi(std::string(count->value));
+                problem_count = parse_int(count->value);
 
                 // 初始化排名和每道题的提交状态
                 for (auto ptr: rankingVec)
                 {
                     team &t = *ptr;
-                    // 初始化每支队伍的每道题提交记录为默认 ProblemStatus
-                    t.get_submit_status().resize(problem_count);
+                    auto &statuses = t.get_submit_status();
+                    statuses.resize(problem_count);
+                    t.get_problem_solved().reserve(problem_count);
                 }
 
                 flush();
@@ -307,7 +323,7 @@ public:
 
                 std::string problemName(problemnameToken->value);
                 std::string teamName(teamnameToken->value);
-                int submitTime = std::stoi(std::string(timeToken->value));
+                int submitTime = parse_int(timeToken->value);
 
                 int problemIdx = problemName[0] - 'A';
                 auto it_team = teamMap.find(teamName);

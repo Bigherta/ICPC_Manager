@@ -32,18 +32,37 @@ private:
         {
             if (obj.state == 0)
             {
-                os << (obj.error_count == 0 ? std::string(".") : std::string("-") + std::to_string(obj.error_count));
+                if (obj.error_count == 0)
+                {
+                    os << '.';
+                }
+                else
+                {
+                    os << '-' << obj.error_count;
+                }
             }
             else if (obj.state == 1)
             {
-                os << (obj.error_count == 0 ? std::string("+") : std::string("+") + std::to_string(obj.error_count));
+                if (obj.error_count == 0)
+                {
+                    os << '+';
+                }
+                else
+                {
+                    os << '+' << obj.error_count;
+                }
             }
             else
             {
-                os << (obj.before_freeze_error_count == 0
-                               ? std::string("0/") + std::to_string(obj.submit_count - obj.before_freeze_error_count)
-                               : std::string("-") + std::to_string(obj.before_freeze_error_count) + std::string("/") +
-                                         std::to_string(obj.submit_count - obj.before_freeze_error_count));
+                int post_freeze_submits = obj.submit_count - obj.before_freeze_error_count;
+                if (obj.before_freeze_error_count == 0)
+                {
+                    os << "0/" << post_freeze_submits;
+                }
+                else
+                {
+                    os << '-' << obj.before_freeze_error_count << '/' << post_freeze_submits;
+                }
             }
             return os;
         }

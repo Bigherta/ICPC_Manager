@@ -33,20 +33,26 @@ inline const std::unordered_map<std::string_view, TokenType> keywordMap = {
         {"Runtime_Error", TokenType::RUNTIME_ERROR},
         {"Time_Limit_Exceed", TokenType::TIME_LIMIT_EXCEED}};
 
-inline std::string tokenTypeToStatusString(const TokenType &t)
+inline const std::string &tokenTypeToStatusString(const TokenType &t)
 {
+    static const std::string accepted = "Accepted";
+    static const std::string wa = "Wrong_Answer";
+    static const std::string tle = "Time_Limit_Exceed";
+    static const std::string re = "Runtime_Error";
+    static const std::string unknown = "UNKNOWN";
+
     switch (t)
     {
         case TokenType::ACCEPTED:
-            return "Accepted";
+            return accepted;
         case TokenType::WRONG_ANSWER:
-            return "Wrong_Answer";
+            return wa;
         case TokenType::TIME_LIMIT_EXCEED:
-            return "Time_Limit_Exceed";
+            return tle;
         case TokenType::RUNTIME_ERROR:
-            return "Runtime_Error";
+            return re;
         default:
-            return "UNKNOWN";
+            return unknown;
     }
 }
 
@@ -144,14 +150,13 @@ public:
         }
     }
 
-    void unfreeze_process(std::set<team *, TeamPtrLess> &freezeOrder, std::ostringstream &out)
+    void unfreeze_process(std::vector<team *> &freezeOrder, std::ostringstream &out)
     {
         if (freezeOrder.empty())
             return;
 
         // 取排名最靠后且还有冻结题的队伍（freezeOrder 存储 team*）
-        auto rev_it = freezeOrder.rbegin();
-        team *oldPtr = *rev_it; // 指向被处理队伍的指针
+        team *oldPtr = freezeOrder.back(); // 指向被处理队伍的指针
         team &team_ref = *oldPtr; // 使用引用避免按 name 再次在 map 中查找
         const std::string &teamName = team_ref.get_name();
         auto &statuses = team_ref.get_submit_status();
@@ -171,35 +176,42 @@ public:
         if (idx == statuses.size())
         {
             team_ref.get_has_frozen() = false;
-            freezeOrder.erase(oldPtr);
+            auto it_freeze = std::find(freezeOrder.begin(), freezeOrder.end(), oldPtr);
+            if (it_freeze != freezeOrder.end())
+                freezeOrder.erase(it_freeze);
             return;
         }
 
-        // 为保持原实现语义：在 rankingVec 仍含旧键时，使用一个 "newKey" 快照来计算 lower_bound
-        team newKey = *oldPtr; // 在拷贝上修改，避免在集合中直接修改元素
-        auto &new_statuses = newKey.get_submit_status();
-        auto &status = new_statuses[idx];
-        status.state = 0;
+        // 计算解冻后的评分变化，避免拷贝整个 team
+        auto &status = statuses[idx];
+        int new_solved_count = team_ref.get_solved_count();
+        int new_time_punishment = team_ref.get_time_punishment();
+        std::vector<int> new_problem_solved = team_ref.get_problem_solved();
         if (status.first_ac_time != -1)
         {
-            status.state = 1;
-            newKey.get_time_punishment() += status.first_ac_time + status.error_count * 20;
-            newKey.add_solved_time(status.first_ac_time);
-            newKey.get_solved_count()++;
+            new_solved_count++;
+            new_time_punishment += status.first_ac_time + status.error_count * 20;
+            auto it_ins = std::lower_bound(new_problem_solved.begin(), new_problem_solved.end(), status.first_ac_time);
+            new_problem_solved.insert(it_ins, status.first_ac_time);
         }
 
         bool any_frozen_left = false;
-        for (const auto &s: new_statuses)
+        for (size_t i = 0; i < statuses.size(); ++i)
         {
-            if (s.state == 2)
+            if (i != idx && statuses[i].state == 2)
             {
                 any_frozen_left = true;
                 break;
             }
         }
+
+        // 构造轻量 newKey 只携带排序关键字段，用于 lower_bound
+        team newKey(teamName);
+        newKey.get_solved_count() = new_solved_count;
+        newKey.get_time_punishment() = new_time_punishment;
+        newKey.get_problem_solved() = std::move(new_problem_solved);
         newKey.get_has_frozen() = any_frozen_left;
 
-        // 在仍含旧键的排序向量上，用 newKey 计算将被取代的队伍
         const team *newKeyPtr = &newKey;
         auto it = std::lower_bound(rankingVec.begin(), rankingVec.end(), newKeyPtr, TeamPtrLess()); // O(log N)
 
@@ -217,15 +229,29 @@ public:
         {
             rankingVec.erase(oldIt);
         }
-        freezeOrder.erase(oldPtr);
+        auto it_freeze = std::find(freezeOrder.begin(), freezeOrder.end(), oldPtr);
+        if (it_freeze != freezeOrder.end())
+            freezeOrder.erase(it_freeze);
 
-        teamMap[teamName] = newKey; // 复制更新后的快照到实际存储
-        team *ptr = &teamMap[teamName];
-        auto insertPos = std::lower_bound(rankingVec.begin(), rankingVec.end(), ptr, TeamPtrLess());
-        rankingVec.insert(insertPos, ptr);
+        // 原对象就地更新并重新插入排名向量
+        status.state = 0;
+        if (status.first_ac_time != -1)
+        {
+            status.state = 1;
+            team_ref.get_time_punishment() = new_time_punishment;
+            team_ref.add_solved_time(status.first_ac_time);
+            team_ref.get_solved_count() = new_solved_count;
+        }
+        team_ref.get_has_frozen() = any_frozen_left;
 
-        if (ptr->get_has_frozen())
-            freezeOrder.insert(ptr);
+        auto insertPos = std::lower_bound(rankingVec.begin(), rankingVec.end(), oldPtr, TeamPtrLess());
+        rankingVec.insert(insertPos, oldPtr);
+
+        if (team_ref.get_has_frozen())
+        {
+            auto insertFreezePos = std::lower_bound(freezeOrder.begin(), freezeOrder.end(), oldPtr, TeamPtrLess());
+            freezeOrder.insert(insertFreezePos, oldPtr);
+        }
     }
     /**
      * execute
@@ -469,15 +495,16 @@ public:
                     }
                     out << "\n";
                 }
-                std::set<team *, TeamPtrLess> freezeOrder; // 未解冻的队伍排序（指针集合，使用 TeamPtrLess）
+                std::vector<team *> freezeOrder; // 未解冻的队伍排序（指针向量，使用 TeamPtrLess）
                 for (auto &pair: teamMap)
                 {
                     team &team_ = pair.second;
                     if (team_.get_has_frozen())
                     {
-                        freezeOrder.insert(&team_);
+                        freezeOrder.push_back(&team_);
                     }
                 }
+                std::sort(freezeOrder.begin(), freezeOrder.end(), TeamPtrLess());
                 while (freezeOrder.size() > 0)
                 {
                     unfreeze_process(freezeOrder, out);
@@ -570,7 +597,7 @@ public:
                     else if (!is_search_all_status && is_search_all_problems)
                     {
                         // 针对指定状态在所有题目的查询，直接使用 team 级别记录
-                        std::string target = statusName;
+                        const std::string &target = statusName;
                         int bestTime = -1;
                         char bestProblem = 'A';
                         if (target == "Accepted")

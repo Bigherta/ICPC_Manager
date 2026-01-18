@@ -82,11 +82,11 @@ private:
 public:
     team() : name(""), rank(0), solved_count(0), time_punishment(0){};
     team(const std::string &team_name) : name(team_name), rank(0), solved_count(0), time_punishment(0){};
-    std::string get_name() const { return name; }
+    const std::string &get_name() const { return name; }
     int &get_rank() { return rank; }
-    int get_rank() const { return rank; }
+    const int &get_rank() const { return rank; }
     int &get_solved_count() { return solved_count; }
-    int get_solved_count() const { return solved_count; }
+    const int &get_solved_count() const { return solved_count; }
     std::vector<ProblemStatus> &get_submit_status() { return problem_submit_status; }
     std::vector<int> &get_problem_solved() { return problem_solved; }
     const std::vector<int> &get_problem_solved() const { return problem_solved; }
@@ -96,9 +96,9 @@ public:
         problem_solved.insert(it, t);
     }
     int &get_time_punishment() { return time_punishment; }
-    int get_time_punishment() const { return time_punishment; }
+    const int &get_time_punishment() const { return time_punishment; }
     bool &get_has_frozen() { return has_frozen; }
-    bool get_has_frozen() const { return has_frozen; }
+    const bool &get_has_frozen() const { return has_frozen; }
     // last_* accessors
     std::pair<std::pair<int, TokenType>, int> &get_last_submit() { return last_submit; }
     std::pair<int, int> &get_last_accept() { return last_accept; }

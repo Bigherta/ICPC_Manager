@@ -1,4 +1,5 @@
 #pragma once
+#include <ostream>
 #ifndef PARSER_HPP
 #define PARSER_HPP
 #include <algorithm>
@@ -96,37 +97,6 @@ public:
     {
         std::vector<token> tokens;
         size_t pos = 0;
-
-        auto tokenTypeFromView = [](std::string_view w) -> TokenType {
-            if (w == "ADDTEAM")
-                return TokenType::ADDTEAM;
-            if (w == "START")
-                return TokenType::START;
-            if (w == "SUBMIT")
-                return TokenType::SUBMIT;
-            if (w == "FLUSH")
-                return TokenType::FLUSH;
-            if (w == "FREEZE")
-                return TokenType::FREEZE;
-            if (w == "SCROLL")
-                return TokenType::SCROLL;
-            if (w == "QUERY_RANKING")
-                return TokenType::QUERY_RANKING;
-            if (w == "QUERY_SUBMISSION")
-                return TokenType::QUERY_SUBMISSION;
-            if (w == "END")
-                return TokenType::END;
-            if (w == "Accepted")
-                return TokenType::ACCEPTED;
-            if (w == "Wrong_Answer")
-                return TokenType::WRONG_ANSWER;
-            if (w == "Runtime_Error")
-                return TokenType::RUNTIME_ERROR;
-            if (w == "Time_Limit_Exceed")
-                return TokenType::TIME_LIMIT_EXCEED;
-            return TokenType::UNKNOWN;
-        };
-
         while (pos < input.length())
         {
             while (pos < input.length() && isspace(static_cast<unsigned char>(input[pos])))
@@ -140,7 +110,7 @@ public:
 
             std::string_view sv(input.data() + start, pos - start);
             token tok;
-            tok.type = tokenTypeFromView(sv);
+            tok.type = keywordMap.count(std::string(sv)) ? keywordMap[std::string(sv)] : TokenType::UNKNOWN;
             tok.value = sv;
             tokens.push_back(tok);
         }
@@ -174,7 +144,7 @@ public:
         }
     }
 
-    void unfreeze_process(std::set<team *, TeamPtrLess> &freezeOrder)
+    void unfreeze_process(std::set<team *, TeamPtrLess> &freezeOrder, std::ostringstream &outbuf)
     {
         if (freezeOrder.empty())
             return;
@@ -237,8 +207,8 @@ public:
             team *displaced = *it;
             if (displaced->get_name() != teamName)
             {
-                std::cout << teamName << " " << displaced->get_name() << " " << newKey.get_problem_solved().size()
-                          << " " << newKey.get_time_punishment() << '\n';
+                outbuf << teamName << " " << displaced->get_name() << " " << newKey.get_problem_solved().size() << " "
+                       << newKey.get_time_punishment() << '\n';
             }
         }
 
@@ -469,21 +439,19 @@ public:
                 is_frozen = false;
                 std::cout << "[Info]Scroll scoreboard.\n";
                 flush();
+
+                std::ostringstream outbuf;
+                for (auto iterator = rankingSet.begin(); iterator != rankingSet.end(); ++iterator)
                 {
-                    std::ostringstream outbuf;
-                    for (auto iterator = rankingSet.begin(); iterator != rankingSet.end(); ++iterator)
+                    team *ptr = *iterator;
+                    team &team_ = *ptr;
+                    outbuf << team_.get_name() << " " << team_.get_rank() << " " << team_.get_problem_solved().size()
+                           << " " << team_.get_time_punishment() << " ";
+                    for (const auto &status: team_.get_submit_status())
                     {
-                        team *ptr = *iterator;
-                        team &team_ = *ptr;
-                        outbuf << team_.get_name() << " " << team_.get_rank() << " "
-                               << team_.get_problem_solved().size() << " " << team_.get_time_punishment() << " ";
-                        for (const auto &status: team_.get_submit_status())
-                        {
-                            outbuf << status << " ";
-                        }
-                        outbuf << "\n";
+                        outbuf << status << " ";
                     }
-                    std::cout << outbuf.str();
+                    outbuf << "\n";
                 }
                 std::set<team *, TeamPtrLess> freezeOrder; // 未解冻的队伍排序（指针集合，使用 TeamPtrLess）
                 for (auto &pair: teamMap)
@@ -496,26 +464,25 @@ public:
                 }
                 while (freezeOrder.size() > 0)
                 {
-                    unfreeze_process(freezeOrder);
+                    unfreeze_process(freezeOrder, outbuf);
                 }
                 // 滚榜结束后刷新，输出最终正确排名
                 flush();
+
+                for (auto iterator = rankingSet.begin(); iterator != rankingSet.end(); ++iterator)
                 {
-                    std::ostringstream outbuf;
-                    for (auto iterator = rankingSet.begin(); iterator != rankingSet.end(); ++iterator)
+                    team *ptr = *iterator;
+                    team &team_ = *ptr;
+                    outbuf << team_.get_name() << " " << team_.get_rank() << " " << team_.get_problem_solved().size()
+                           << " " << team_.get_time_punishment() << " ";
+                    for (const auto &status: team_.get_submit_status())
                     {
-                        team *ptr = *iterator;
-                        team &team_ = *ptr;
-                        outbuf << team_.get_name() << " " << team_.get_rank() << " "
-                               << team_.get_problem_solved().size() << " " << team_.get_time_punishment() << " ";
-                        for (const auto &status: team_.get_submit_status())
-                        {
-                            outbuf << status << " ";
-                        }
-                        outbuf << "\n";
+                        outbuf << status << " ";
                     }
-                    std::cout << outbuf.str();
+                    outbuf << "\n";
                 }
+                std::cout << outbuf.str();
+
                 break;
             }
 
